@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "TriageRecord": {
+      "title": "TriageRecord",
+      "description": "A livestock triage and diagnosis case record",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User UID or anonymous device identifier"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "User Google/Gmail account email address"
+        },
+        "animalType": {
+          "type": "string",
+          "description": "Type of livestock evaluated"
+        },
+        "symptomsText": {
+          "type": "string",
+          "description": "Symptoms description entered by farmer"
+        },
+        "imageDataUrl": {
+          "type": "string",
+          "description": "Optional base64 or storage url of symptom image"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Client timestamp in milliseconds"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Server timestamp"
+        },
+        "diagnosis": {
+          "type": "object",
+          "description": "Complete AI diagnosis payload"
+        }
+      },
+      "required": ["userId", "animalType", "diagnosis"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "/triage_records/{recordId}": {
+      "schema": "TriageRecord",
+      "description": "Collection of livestock triage history records"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles"
+    }
+  }
+}

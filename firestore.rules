@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /triage_records/{recordId} {
+      // Allow read/delete/update if user owns the record via auth UID or verified Google email, or if it is a local device guest record
+      allow read, delete, update: if (
+        request.auth != null && (
+          resource.data.userId == request.auth.uid ||
+          (resource.data.userEmail != null && resource.data.userEmail == request.auth.token.email)
+        )
+      ) || (
+        resource.data.userId.matches('^dev_.*')
+      );
+
+      // Allow create if authenticated user saves with their own UID/email or guest device token
+      allow create: if (
+        request.auth != null && (
+          request.resource.data.userId == request.auth.uid ||
+          (request.resource.data.userEmail != null && request.resource.data.userEmail == request.auth.token.email)
+        )
+      ) || (
+        request.resource.data.userId.matches('^dev_.*')
+      );
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
