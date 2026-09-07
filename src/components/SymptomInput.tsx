@@ -15,9 +15,15 @@ import {
   Pause,
   RotateCcw,
   CheckCircle2,
+  Target,
+  Wheat,
+  Flame,
+  Scan,
 } from 'lucide-react';
 import { SupportedLanguage } from '../types';
 import { UI_STRINGS, COMMON_SYMPTOMS_LIST } from '../data/translations';
+import { LesionHeatmapOverlay } from './LesionHeatmapOverlay';
+import { generateSimulatedLesions } from '../data/ecosystemData';
 
 interface SymptomInputProps {
   currentLang: SupportedLanguage;
@@ -35,6 +41,8 @@ interface SymptomInputProps {
   setAudioMimeType: (mime: string) => void;
   onAnalyze: () => void;
   isLoading: boolean;
+  onOpenVisualBodyMap?: () => void;
+  onOpenFodderScanner?: () => void;
 }
 
 export function SymptomInput({
@@ -53,6 +61,8 @@ export function SymptomInput({
   setAudioMimeType,
   onAnalyze,
   isLoading,
+  onOpenVisualBodyMap,
+  onOpenFodderScanner,
 }: SymptomInputProps) {
   const t = UI_STRINGS[currentLang];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +145,7 @@ export function SymptomInput({
 
   const startVoiceRecording = async () => {
     setMicError(null);
+    const initialText = symptomsText; // Capture current text at start
     try {
       audioChunksRef.current = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -203,17 +214,17 @@ export function SymptomInput({
               ? 'mr-IN'
               : 'en-IN';
           rec.onresult = (event: any) => {
-            let transcript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-              transcript += event.results[i][0].transcript;
+            let sessionTranscript = '';
+            for (let i = 0; i < event.results.length; ++i) {
+              sessionTranscript += event.results[i][0].transcript;
             }
-            if (transcript.trim()) {
-              setSymptomsText(
-                symptomsText
-                  ? `${symptomsText} ${transcript.trim()}`
-                  : transcript.trim()
-              );
-            }
+            
+            // Append session transcript to the initial text captured when recording started
+            setSymptomsText(
+              initialText.trim() 
+                ? `${initialText.trim()} ${sessionTranscript.trim()}` 
+                : sessionTranscript.trim()
+            );
           };
           rec.start();
           speechRecRef.current = rec;
@@ -325,20 +336,34 @@ export function SymptomInput({
 
       {/* 2. Photo / Fodder Upload Section */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <label className="text-sm sm:text-base font-bold text-slate-100 flex items-center space-x-2.5">
             <span className="w-6 h-6 rounded-lg bg-emerald-600/30 border border-emerald-500/50 text-emerald-400 text-xs flex items-center justify-center font-black shadow-[0_0_10px_rgba(16,185,129,0.3)]">
               2
             </span>
             <span className="tracking-tight">{t.uploadPhoto}</span>
           </label>
-          <span className="text-xs font-mono text-slate-400">
-            {currentLang === 'hi'
-              ? 'त्वचा, खुर, थन या चारे की तस्वीर'
-              : currentLang === 'mr'
-              ? 'त्वचा, खूर किंवा चाऱ्याचे चित्र'
-              : 'Skin, hooves, udder, or feed sample'}
-          </span>
+
+          {/* Fodder Scanner Quick Trigger */}
+          {onOpenFodderScanner && (
+            <button
+              type="button"
+              onClick={onOpenFodderScanner}
+              className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 text-amber-300 text-xs font-bold transition shadow-sm cursor-pointer self-start sm:self-auto"
+            >
+              <Wheat className="w-3.5 h-3.5 text-amber-400" />
+              <span>
+                <span className="hidden min-[450px]:inline">
+                  {currentLang === 'hi'
+                    ? 'चारा व फफूंद जांच (Fodder AI)'
+                    : currentLang === 'mr'
+                    ? 'चारा व बुरशी तपासणी (Fodder AI)'
+                    : 'Fodder Quality & Mold AI'}
+                </span>
+                <span className="min-[450px]:hidden">Fodder AI</span>
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Hidden inputs */}
@@ -360,40 +385,27 @@ export function SymptomInput({
 
         {/* Image Preview with HUD Scanner Reticle or Dropzone */}
         {imagePreview ? (
-          <div className="relative rounded-2xl overflow-hidden border border-emerald-500/50 bg-black/60 shadow-[0_0_30px_rgba(16,185,129,0.2)] group">
-            {/* Viewfinder Corner HUD brackets */}
-            <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-emerald-400 pointer-events-none z-10"></div>
-            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-emerald-400 pointer-events-none z-10"></div>
-            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-emerald-400 pointer-events-none z-10"></div>
-            <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-emerald-400 pointer-events-none z-10"></div>
-
-            <img
-              src={imagePreview}
-              alt="Livestock Symptom"
-              className="w-full max-h-80 object-contain mx-auto bg-black/80"
+          <div className="space-y-3">
+            <LesionHeatmapOverlay
+              imageSrc={imagePreview}
+              lesions={generateSimulatedLesions(selectedAnimal, symptomsText)}
+              currentLang={currentLang}
             />
-            <div className="absolute top-3 right-3 z-20 flex space-x-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-mono">
+                {currentLang === 'hi' ? 'स्मार्ट विजुअल हीटमैप सक्रिय है' : currentLang === 'mr' ? 'स्मार्ट व्हिज्युअल हीटमॅप सुरू आहे' : 'Neural Lesion Heatmap Active'}
+              </span>
               <button
                 type="button"
                 onClick={() => {
                   setImagePreview(null);
                   setImageMimeType('');
                 }}
-                className="p-1.5 bg-red-600/90 hover:bg-red-500 text-white rounded-lg shadow-lg transition active:scale-95 cursor-pointer"
-                title={t.removePhoto}
+                className="px-3 py-1 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 text-xs font-bold transition cursor-pointer flex items-center space-x-1"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
+                <span>{t.removePhoto}</span>
               </button>
-            </div>
-            <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs text-emerald-400 flex items-center space-x-2 border border-emerald-500/40 font-mono">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span>
-                {currentLang === 'hi'
-                  ? 'फोटो संलग्न है • AI विश्लेषण हेतु तैयार'
-                  : currentLang === 'mr'
-                  ? 'फोटो जोडला आहे • AI विश्लेषणासाठी सज्ज'
-                  : 'SAMPLE ACQUIRED • READY FOR DIAGNOSTIC'}
-              </span>
             </div>
           </div>
         ) : (
@@ -505,7 +517,7 @@ export function SymptomInput({
                 onClick={stopLiveCamera}
                 className="px-5 py-3 rounded-full bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold cursor-pointer"
               >
-                {currentLang === 'hi' ? 'रद्द करें' : currentLang === 'mr' ? 'रद्द करा' : 'Cancel'}
+                Cancel
               </button>
             </div>
           </div>
@@ -522,15 +534,33 @@ export function SymptomInput({
             <span className="tracking-tight">{t.voiceOrText}</span>
           </label>
 
-          {/* Voice Record Action Buttons */}
-          <div className="flex items-center space-x-2">
+          {/* Action Buttons: Body Map & Voice Record */}
+          <div className="flex flex-wrap items-center gap-2 justify-end">
+            {onOpenVisualBodyMap && (
+              <button
+                type="button"
+                onClick={onOpenVisualBodyMap}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 text-[11px] sm:text-xs font-bold transition cursor-pointer shadow-sm active:scale-95 whitespace-nowrap"
+                title="Open Interactive Visual Animal Body Map (सचित्र शरीर नकाशा)"
+              >
+                <Target className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  {currentLang === 'hi'
+                    ? 'शरीर नक्शा'
+                    : currentLang === 'mr'
+                    ? 'शरीर नकाशा'
+                    : 'Body Map'}
+                </span>
+              </button>
+            )}
+
             {isRecording ? (
               <button
                 type="button"
                 onClick={stopVoiceRecording}
-                className="flex items-center space-x-2 px-4 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse cursor-pointer"
+                className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-[11px] sm:text-xs font-bold shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse cursor-pointer whitespace-nowrap"
               >
-                <Square className="w-3.5 h-3.5 fill-current" />
+                <Square className="w-3 h-3 fill-current" />
                 <span>
                   {t.stopRecord} ({recordingSeconds}s)
                 </span>
@@ -539,9 +569,9 @@ export function SymptomInput({
               <button
                 type="button"
                 onClick={startVoiceRecording}
-                className="flex items-center space-x-2 px-4 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition cursor-pointer active:scale-95 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] sm:text-xs font-bold transition cursor-pointer active:scale-95 shadow-[0_0_10px_rgba(245,158,11,0.2)] whitespace-nowrap"
               >
-                <Mic className="w-3.5 h-3.5 text-amber-400" />
+                <Mic className="w-3 h-3 text-amber-400" />
                 <span>{t.voiceRecord}</span>
               </button>
             )}
@@ -640,7 +670,7 @@ export function SymptomInput({
                 onClick={startVoiceRecording}
                 className="px-2.5 py-1 text-[11px] font-bold bg-white/10 hover:bg-white/15 rounded-lg text-slate-200 transition cursor-pointer"
               >
-                {currentLang === 'hi' ? 'फिर से रिकॉर्ड करें' : currentLang === 'mr' ? 'पुन्हा रेकॉर्ड करा' : 'Re-record'}
+                Re-record
               </button>
             </div>
           </div>

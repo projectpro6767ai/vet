@@ -5,10 +5,10 @@ export class SpeechVoiceManager {
     typeof window !== 'undefined' && 'speechSynthesis' in window
       ? window.speechSynthesis
       : null;
+  private static currentAudio: HTMLAudioElement | null = null;
   private static currentUtterance: SpeechSynthesisUtterance | null = null;
   private static isCurrentlySpeaking = false;
-  private static queue: string[] = [];
-  private static currentLang: 'hi' | 'mr' | 'en' = 'hi';
+  private static activeLang: 'hi' | 'mr' | 'en' | null = null;
   private static onQueueEnd?: () => void;
   private static onQueueStart?: () => void;
   private static onQueueError?: (err: any) => void;
@@ -18,8 +18,16 @@ export class SpeechVoiceManager {
    */
   private static splitIntoSentences(text: string): string[] {
     if (!text) return [];
+    // Sanitize text: remove surrounding quotes, markdown bold/bullets
+    const cleaned = text
+      .replace(/["“”«»]/g, '')
+      .replace(/[*_#`~]/g, '')
+      .trim();
+
+    if (!cleaned) return [];
+
     // Split on ।, ., \n, !, ?, ;
-    const rawChunks = text.split(/([।\n.!?]+)/);
+    const rawChunks = cleaned.split(/([।\n.!?]+)/);
     const sentences: string[] = [];
     let temp = '';
 
@@ -44,129 +52,176 @@ export class SpeechVoiceManager {
   }
 
   /**
-   * Speak full text (broken down automatically into sentence chunks to prevent browser cutoff)
+   * Speak full text in Marathi, Hindi, or English.
+   * Uses server-side /api/tts endpoint first for authentic pronunciation and cross-device support,
+   * falling back automatically to the browser Web Speech API.
    */
-  public static speakText(
+  public static async speakText(
     text: string,
     lang: 'hi' | 'mr' | 'en' = 'hi',
     onStart?: () => void,
     onEnd?: () => void,
     onError?: (err: any) => void
-  ): boolean {
+  ): Promise<boolean> {
+    this.stop();
+
+    const cleaned = text
+      .replace(/["“”«»*_#`~]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleaned) {
+      if (onEnd) onEnd();
+      return false;
+    }
+
+    this.activeLang = lang;
+    this.isCurrentlySpeaking = true;
+    this.onQueueStart = onStart;
+    this.onQueueEnd = onEnd;
+    this.onQueueError = onError;
+
+    if (this.onQueueStart) {
+      this.onQueueStart();
+    }
+
+    // Attempt 1: Server streaming audio via /api/tts
+    try {
+      const audioUrl = `/api/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(cleaned)}`;
+      const audio = new Audio(audioUrl);
+      this.currentAudio = audio;
+
+      audio.onended = () => {
+        this.isCurrentlySpeaking = false;
+        this.activeLang = null;
+        this.currentAudio = null;
+        if (this.onQueueEnd) this.onQueueEnd();
+      };
+
+      audio.onerror = (e) => {
+        console.warn('HTML5 Audio playback error from /api/tts, using WebSpeech fallback:', e);
+        this.currentAudio = null;
+        this.fallbackWebSpeech(cleaned, lang);
+      };
+
+      await audio.play();
+      return true;
+    } catch (err) {
+      console.warn('Audio.play() error, attempting WebSpeech fallback:', err);
+      this.currentAudio = null;
+      return this.fallbackWebSpeech(cleaned, lang);
+    }
+  }
+
+  private static fallbackWebSpeech(text: string, lang: 'hi' | 'mr' | 'en'): boolean {
     if (!this.synth) {
-      console.warn('Speech synthesis not supported in this environment');
+      this.isCurrentlySpeaking = false;
+      this.activeLang = null;
+      if (this.onQueueError) this.onQueueError(new Error('TTS unavailable'));
+      if (this.onQueueEnd) this.onQueueEnd();
       return false;
     }
 
     try {
-      this.stop();
-
-      const chunks = this.splitIntoSentences(text);
-      if (chunks.length === 0) {
-        if (onEnd) onEnd();
-        return false;
+      this.synth.cancel();
+      if (this.synth.paused) {
+        this.synth.resume();
       }
 
-      this.queue = chunks;
-      this.currentLang = lang;
-      this.onQueueStart = onStart;
-      this.onQueueEnd = onEnd;
-      this.onQueueError = onError;
-      this.isCurrentlySpeaking = true;
+      const utterance = new SpeechSynthesisUtterance(text);
+      this.currentUtterance = utterance;
 
-      if (this.onQueueStart) {
-        this.onQueueStart();
+      if (lang === 'mr') {
+        utterance.lang = 'mr-IN';
+      } else if (lang === 'hi') {
+        utterance.lang = 'hi-IN';
+      } else {
+        utterance.lang = 'en-IN';
       }
 
-      this.playNextInQueue();
+      utterance.rate = 0.93;
+      utterance.pitch = 1.0;
+
+      const voices = this.synth.getVoices();
+      let matchedVoice = voices.find((v) =>
+        v.lang.toLowerCase().startsWith(lang)
+      );
+      if (!matchedVoice && lang === 'mr') {
+        matchedVoice = voices.find((v) => v.lang.toLowerCase().startsWith('hi'));
+      }
+
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      } else if (lang === 'mr') {
+        utterance.lang = 'hi-IN';
+      }
+
+      utterance.onend = () => {
+        this.isCurrentlySpeaking = false;
+        this.activeLang = null;
+        this.currentUtterance = null;
+        if (this.onQueueEnd) this.onQueueEnd();
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('Utterance error:', e);
+        this.isCurrentlySpeaking = false;
+        this.activeLang = null;
+        this.currentUtterance = null;
+        if (this.onQueueEnd) this.onQueueEnd();
+        if (this.onQueueError) this.onQueueError(e);
+      };
+
+      this.synth.speak(utterance);
       return true;
     } catch (err) {
-      console.error('Speech synthesis failure:', err);
+      console.error('Web Speech fallback failure:', err);
       this.isCurrentlySpeaking = false;
-      if (onError) onError(err);
+      this.activeLang = null;
+      this.currentUtterance = null;
+      if (this.onQueueEnd) this.onQueueEnd();
+      if (this.onQueueError) this.onQueueError(err);
       return false;
     }
   }
 
-  private static playNextInQueue() {
-    if (!this.synth || !this.isCurrentlySpeaking) return;
-
-    if (this.queue.length === 0) {
-      this.isCurrentlySpeaking = false;
-      this.currentUtterance = null;
-      if (this.onQueueEnd) {
-        this.onQueueEnd();
-      }
-      return;
-    }
-
-    const nextChunk = this.queue.shift();
-    if (!nextChunk || nextChunk.trim().length === 0) {
-      this.playNextInQueue();
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(nextChunk);
-    this.currentUtterance = utterance;
-
-    // Set voice language
-    if (this.currentLang === 'hi') {
-      utterance.lang = 'hi-IN';
-    } else if (this.currentLang === 'mr') {
-      utterance.lang = 'mr-IN';
-    } else {
-      utterance.lang = 'en-IN';
-    }
-
-    utterance.rate = 0.93; // Clear natural pacing for Indian rural vernacular
-    utterance.pitch = 1.0;
-
-    // Match best available browser voice
-    const voices = this.synth.getVoices();
-    const targetPrefix =
-      this.currentLang === 'hi' ? 'hi' : this.currentLang === 'mr' ? 'mr' : 'en';
-    
-    // Priority search: exact language prefix, fallback to hi if mr not found on some devices
-    let matchedVoice = voices.find((v) =>
-      v.lang.toLowerCase().startsWith(targetPrefix)
-    );
-    if (!matchedVoice && this.currentLang === 'mr') {
-      // Many Android/Chromium browsers pronounce Marathi well using Hindi phoneme engines
-      matchedVoice = voices.find((v) => v.lang.toLowerCase().startsWith('hi'));
-    }
-    if (matchedVoice) {
-      utterance.voice = matchedVoice;
-    }
-
-    utterance.onend = () => {
-      this.playNextInQueue();
-    };
-
-    utterance.onerror = (e) => {
-      // If user stopped or cancelled, ignore
-      if (e.error === 'canceled' || e.error === 'interrupted') {
-        this.isCurrentlySpeaking = false;
-        return;
-      }
-      console.warn('Utterance step notice:', e);
-      // Continue next sentence even if one chunk failed
-      this.playNextInQueue();
-    };
-
-    this.synth.speak(utterance);
-  }
-
   public static stop() {
     this.isCurrentlySpeaking = false;
-    this.queue = [];
-    if (this.synth) {
-      this.synth.cancel();
+    this.activeLang = null;
+
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+        this.currentAudio.src = '';
+      } catch (e) {
+        // Ignore audio stop errors
+      }
+      this.currentAudio = null;
     }
+
+    if (this.synth) {
+      try {
+        this.synth.cancel();
+      } catch (e) {
+        // Ignore cancel errors
+      }
+    }
+
     this.currentUtterance = null;
+    if (this.onQueueEnd) {
+      const cb = this.onQueueEnd;
+      this.onQueueEnd = undefined;
+      cb();
+    }
   }
 
   public static isSpeaking(): boolean {
-    return this.isCurrentlySpeaking || Boolean(this.synth && this.synth.speaking);
+    return this.isCurrentlySpeaking || Boolean(this.currentAudio && !this.currentAudio.paused);
+  }
+
+  public static getActiveLang(): 'hi' | 'mr' | 'en' | null {
+    return this.activeLang;
   }
 }
 

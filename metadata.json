@@ -3,7 +3,8 @@
   "description": "Fast, practical, and empathetic veterinary triage assistant AI for livestock farmers in rural India. Created by Rajvardhan Vitthal Suryavanshi.",
   "requestFramePermissions": [
     "camera",
-    "microphone"
+    "microphone",
+    "geolocation"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

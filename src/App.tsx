@@ -31,6 +31,21 @@ import { TriageHistoryModal } from './components/TriageHistoryModal';
 import { HelplineModal } from './components/HelplineModal';
 import { AuthModal } from './components/AuthModal';
 import { SafetyDisclaimer } from './components/SafetyDisclaimer';
+import { EdgeAiModal } from './components/EdgeAiModal';
+import { MvuDispatchModal } from './components/MvuDispatchModal';
+import { DialectVoiceModal } from './components/DialectVoiceModal';
+import { OutbreakMapModal } from './components/OutbreakMapModal';
+import { RemedyCalculatorModal } from './components/RemedyCalculatorModal';
+import { PdfExportModal } from './components/PdfExportModal';
+import { VisualBodyMapModal } from './components/VisualBodyMapModal';
+import { FodderMoldScannerModal } from './components/FodderMoldScannerModal';
+import { IvrRelayModal } from './components/IvrRelayModal';
+import { ChemistFinderModal } from './components/ChemistFinderModal';
+import { EPashuhaatModal } from './components/EPashuhaatModal';
+import { VaccinationTrackerModal } from './components/VaccinationTrackerModal';
+import { NearestHospitalModal } from './components/NearestHospitalModal';
+import { ExhibitionPlaybookModal } from './components/ExhibitionPlaybookModal';
+import { runOfflineEdgeInference } from './utils/edgeInference';
 import {
   saveTriageRecordToSupabase,
   fetchTriageRecordsFromSupabase,
@@ -54,8 +69,8 @@ import {
 const STORAGE_KEY = 'vet_mitra_triage_history_v1';
 
 export default function App() {
-  const [currentLang, setCurrentLang] = useState<SupportedLanguage>('hi');
-  const [selectedAnimal, setSelectedAnimal] = useState<string>('Cow (गाय)');
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en');
+  const [selectedAnimal, setSelectedAnimal] = useState<string>('Cow');
   const [symptomsText, setSymptomsText] = useState<string>('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>('');
@@ -70,6 +85,21 @@ export default function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [isHelplineOpen, setIsHelplineOpen] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [isEdgeAiOpen, setIsEdgeAiOpen] = useState<boolean>(false);
+  const [isMvuOpen, setIsMvuOpen] = useState<boolean>(false);
+  const [isDialectVoiceOpen, setIsDialectVoiceOpen] = useState<boolean>(false);
+  const [isOutbreakOpen, setIsOutbreakOpen] = useState<boolean>(false);
+  const [isRemedyOpen, setIsRemedyOpen] = useState<boolean>(false);
+  const [isPdfOpen, setIsPdfOpen] = useState<boolean>(false);
+  const [isBodyMapOpen, setIsBodyMapOpen] = useState<boolean>(false);
+  const [isFodderOpen, setIsFodderOpen] = useState<boolean>(false);
+  const [isIvrOpen, setIsIvrOpen] = useState<boolean>(false);
+  const [isChemistOpen, setIsChemistOpen] = useState<boolean>(false);
+  const [isEPashuhaatOpen, setIsEPashuhaatOpen] = useState<boolean>(false);
+  const [isVaccinationOpen, setIsVaccinationOpen] = useState<boolean>(false);
+  const [isTrackHospitalOpen, setIsTrackHospitalOpen] = useState<boolean>(false);
+  const [isExhibitionPlaybookOpen, setIsExhibitionPlaybookOpen] = useState<boolean>(false);
+
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [history, setHistory] = useState<TriageRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -386,21 +416,31 @@ export default function App() {
     }
   };
 
-  // Perform AI Diagnosis
+  // Perform AI Diagnosis (Supports Live Server & On-Device Offline TFLite Edge Inference)
   const handleAnalyze = async () => {
     if (!symptomsText && !imagePreview && !audioBase64) {
-      setErrorMsg(
-        currentLang === 'hi'
-          ? 'कृपया पशु के लक्षण बताएं या फोटो/आवाज संलग्न करें।'
-          : currentLang === 'mr'
-          ? 'कृपया जनावराची लक्षणे सांगा किंवा फोटो/आवाज जोडा.'
-          : 'Please enter symptoms, upload a photo, or record a voice note.'
-      );
+      setErrorMsg('Please enter symptoms, upload a photo, or record a voice note.');
       return;
     }
 
     setIsLoading(true);
     setErrorMsg(null);
+
+    // 1. Instant On-Device Edge AI Check if completely offline
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      console.log('⚡ Offline detected: Running on-device TFLite/ONNX Edge AI inference...');
+      try {
+        const edgeRes = runOfflineEdgeInference(selectedAnimal, symptomsText);
+        setDiagnosis(edgeRes.diagnosis);
+        saveToHistory(edgeRes.diagnosis);
+        window.scrollTo({ top: 120, behavior: 'smooth' });
+        return;
+      } catch (edgeErr) {
+        console.error('Edge inference error:', edgeErr);
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
     try {
       const response = await fetch('/api/diagnose', {
@@ -431,30 +471,27 @@ export default function App() {
       // Scroll to diagnosis result
       window.scrollTo({ top: 120, behavior: 'smooth' });
     } catch (err: any) {
-      console.error('Diagnosis failed:', err);
+      console.error('Network diagnosis failed, attempting On-Device Edge fallback:', err);
+      // Seamless On-Device Edge AI Fallback for rural Taluka zones
+      try {
+        const edgeRes = runOfflineEdgeInference(selectedAnimal, symptomsText);
+        setDiagnosis(edgeRes.diagnosis);
+        saveToHistory(edgeRes.diagnosis);
+        window.scrollTo({ top: 120, behavior: 'smooth' });
+        return;
+      } catch (edgeErr) {
+        console.error('Fallback edge failed:', edgeErr);
+      }
+
       let displayMsg = '';
       const rawMsg = String(err?.message || '');
 
       if (rawMsg.includes('503') || rawMsg.includes('high demand') || rawMsg.includes('UNAVAILABLE')) {
-        displayMsg =
-          currentLang === 'hi'
-            ? 'सर्वर पर अधिक लोड है, लेकिन हमारा स्थानीय प्राथमिक उपचार मोड सक्रिय है। कृपया पुनः बटन दबाएं।'
-            : currentLang === 'mr'
-            ? 'सर्व्हरवर लोड आहे, तरी कृपया पुन्हा प्रयत्न करा.'
-            : 'AI Service is experiencing temporary high demand. Please try once more.';
+        displayMsg = 'AI Service is experiencing temporary high demand. Please try once more.';
       } else if (rawMsg.startsWith('{') || rawMsg.includes('"error"')) {
-        displayMsg =
-          currentLang === 'hi'
-            ? 'जांच प्रक्रिया में अस्थायी समस्या आई। कृपया पुनः प्रयास करें।'
-            : currentLang === 'mr'
-            ? 'तपासणी प्रक्रियेत तात्पुरती त्रुटी आली. कृपया पुन्हा प्रयत्न करा.'
-            : 'Temporary service error occurred. Please try again.';
+        displayMsg = 'Temporary service error occurred. Please try again.';
       } else {
-        displayMsg =
-          err.message ||
-          (currentLang === 'hi'
-            ? 'जांच प्रक्रिया में त्रुटि हुई। कृपया पुनः प्रयास करें।'
-            : 'Failed to complete triage. Please try again.');
+        displayMsg = err.message || 'Failed to complete triage. Please try again.';
       }
 
       setErrorMsg(displayMsg);
@@ -508,6 +545,14 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthOpen(true)}
         onSignOut={handleUserSignOut}
+        onOpenEdgeAi={() => setIsEdgeAiOpen(true)}
+        onOpenOutbreak={() => setIsOutbreakOpen(true)}
+        onOpenCalculator={() => setIsRemedyOpen(true)}
+        onOpenDialectVoice={() => setIsDialectVoiceOpen(true)}
+        onOpenChemist={() => setIsChemistOpen(true)}
+        onOpenEPashuhaat={() => setIsEPashuhaatOpen(true)}
+        onOpenVaccination={() => setIsVaccinationOpen(true)}
+        onOpenExhibitionPlaybook={() => setIsExhibitionPlaybookOpen(true)}
       />
 
       {/* 2. Emergency 1962 Helpline Banner */}
@@ -550,6 +595,13 @@ export default function App() {
                 diagnosis={diagnosis}
                 currentLang={currentLang}
                 onReset={handleResetForm}
+                onOpenPdfReport={() => setIsPdfOpen(true)}
+                onOpenRemedyCalculator={() => setIsRemedyOpen(true)}
+                onOpenIvrRelay={() => setIsIvrOpen(true)}
+                onOpenChemist={() => setIsChemistOpen(true)}
+                onOpenEPashuhaat={() => setIsEPashuhaatOpen(true)}
+                onOpenVaccination={() => setIsVaccinationOpen(true)}
+                onOpenTrackHospital={() => setIsTrackHospitalOpen(true)}
               />
             </motion.div>
           ) : (
@@ -562,7 +614,7 @@ export default function App() {
               className="space-y-6"
             >
               {/* 1. Animal Selection */}
-              <div className="bg-white/5 backdrop-blur-xl rounded-[28px] sm:rounded-[32px] border border-white/10 p-5 sm:p-7 shadow-2xl space-y-4">
+              <div className="bg-white/5 backdrop-blur-xl rounded-[28px] sm:rounded-[32px] border border-white/10 p-5 sm:p-7 pb-6 sm:pb-8 shadow-2xl space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="text-sm sm:text-base font-bold text-slate-100 flex items-center space-x-2.5">
                     <span className="w-6 h-6 rounded-lg bg-emerald-600/30 border border-emerald-500/50 text-emerald-400 text-xs flex items-center justify-center font-black shadow-[0_0_10px_rgba(16,185,129,0.3)]">
@@ -599,6 +651,8 @@ export default function App() {
                 setAudioMimeType={setAudioMimeType}
                 onAnalyze={handleAnalyze}
                 isLoading={isLoading}
+                onOpenVisualBodyMap={() => setIsBodyMapOpen(true)}
+                onOpenFodderScanner={() => setIsFodderOpen(true)}
               />
 
               {/* 4. Quick Field Test Cases */}
@@ -653,6 +707,135 @@ export default function App() {
         }}
         onSignOut={handleUserSignOut}
       />
+
+      {/* 1. Offline-First AI Edge Inference Modal */}
+      <EdgeAiModal
+        isOpen={isEdgeAiOpen}
+        onClose={() => setIsEdgeAiOpen(false)}
+        currentLang={currentLang}
+        onApplyDiagnosis={(d) => {
+          setDiagnosis(d);
+          saveToHistory(d);
+        }}
+      />
+
+      {/* 2. Direct 1962 Helpline & Mobile Veterinary Unit (MVU) Dispatch Integration */}
+      <MvuDispatchModal
+        isOpen={isMvuOpen}
+        onClose={() => setIsMvuOpen(false)}
+        diagnosis={diagnosis}
+        currentLang={currentLang}
+      />
+
+      {/* 3. Audio-First Interactive AI (Full Local Dialect Voice Assistant) */}
+      <DialectVoiceModal
+        isOpen={isDialectVoiceOpen}
+        onClose={() => setIsDialectVoiceOpen(false)}
+        onDispatchVoiceCommand={(command, animal) => {
+          setSymptomsText(command);
+          if (animal) setSelectedAnimal(animal);
+          handleAnalyze();
+        }}
+        onOpenMvu={() => setIsMvuOpen(true)}
+        onOpenCalculator={() => setIsRemedyOpen(true)}
+        onOpenOutbreak={() => setIsOutbreakOpen(true)}
+      />
+
+      {/* 4. Local Outbreak Early Warning & Geofencing System */}
+      <OutbreakMapModal
+        isOpen={isOutbreakOpen}
+        onClose={() => setIsOutbreakOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 5. Smart Feed & Ayurvedic Medicine Calculator */}
+      <RemedyCalculatorModal
+        isOpen={isRemedyOpen}
+        onClose={() => setIsRemedyOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 6. Exportable Clinical Patient History PDF Docket with QR Code */}
+      {diagnosis && (
+        <PdfExportModal
+          isOpen={isPdfOpen}
+          onClose={() => setIsPdfOpen(false)}
+          diagnosis={diagnosis}
+          currentLang={currentLang}
+          animalType={selectedAnimal}
+          symptomsText={symptomsText}
+        />
+      )}
+
+      {/* 7. Interactive Visual Animal Body Map Modal */}
+      <VisualBodyMapModal
+        isOpen={isBodyMapOpen}
+        onClose={() => setIsBodyMapOpen(false)}
+        currentLang={currentLang}
+        onSelectSymptomQuery={(query, animal) => {
+          if (animal) setSelectedAnimal(animal);
+          setSymptomsText((prev) => (prev ? `${prev}; ${query}` : query));
+        }}
+      />
+
+      {/* 8. Fodder & Silage Mold Quality Scanner Modal */}
+      <FodderMoldScannerModal
+        isOpen={isFodderOpen}
+        onClose={() => setIsFodderOpen(false)}
+        currentLang={currentLang}
+        onApplyFodderReport={(report) => {
+          const note = `[Fodder AI Scan: ${report.sampleType} - Safety Score: ${report.safetyScore}/100, Aflatoxin Risk: ${report.aflatoxinRiskLevel}, Mold: ${report.moldDetected ? 'Detected' : 'Negative'}, Est. ${report.estimatedPpb} ppb]`;
+          setSymptomsText((prev) => (prev ? `${prev}\n${note}` : note));
+        }}
+      />
+
+      {/* 9. Offline Feature Phone IVR / Missed Call Audio Relay Modal */}
+      <IvrRelayModal
+        isOpen={isIvrOpen}
+        onClose={() => setIsIvrOpen(false)}
+        diagnosis={diagnosis}
+        currentLang={currentLang}
+      />
+
+      {/* 10. Taluka Chemist & Herbal Store Directory Modal */}
+      <ChemistFinderModal
+        isOpen={isChemistOpen}
+        onClose={() => setIsChemistOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 11. E-Pashuhaat Doorstep AI Technician & Insurance Portal Modal */}
+      <EPashuhaatModal
+        isOpen={isEPashuhaatOpen}
+        onClose={() => setIsEPashuhaatOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 12. Government Vaccination Calendar & Subsidy Tracker Modal */}
+      <VaccinationTrackerModal
+        isOpen={isVaccinationOpen}
+        onClose={() => setIsVaccinationOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 13. Nearest Veterinary Hospital & Emergency Route Tracker */}
+      <NearestHospitalModal
+        isOpen={isTrackHospitalOpen}
+        onClose={() => setIsTrackHospitalOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 14. Live Exhibition Judges Demonstration & Zero-Net Benchmark Playbook Modal */}
+      <ExhibitionPlaybookModal
+        isOpen={isExhibitionPlaybookOpen}
+        onClose={() => setIsExhibitionPlaybookOpen(false)}
+        currentLang={currentLang}
+        onTriggerZeroNetDemo={() => {
+          setIsExhibitionPlaybookOpen(false);
+          setIsEdgeAiOpen(true);
+        }}
+      />
     </div>
   );
 }
+
