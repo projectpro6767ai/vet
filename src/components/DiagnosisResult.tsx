@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { VetDiagnosisResponse, SupportedLanguage } from '../types';
 import { UI_STRINGS } from '../data/translations';
-import { SpeechVoiceManager } from '../utils/audio';
+import { SpeechVoiceManager, buildTriageVoiceScript } from '../utils/audio';
 import { downloadClinicalReportPdf } from '../utils/pdfExport';
 
 interface DiagnosisResultProps {
@@ -50,6 +50,7 @@ export function DiagnosisResult({
 }: DiagnosisResultProps) {
   const t = UI_STRINGS[currentLang];
   const [activeVoiceLang, setActiveVoiceLang] = useState<'mr' | 'hi' | 'en' | null>(null);
+  const [voiceMode, setVoiceMode] = useState<'full' | 'summary'>('full');
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
   const [showRawJson, setShowRawJson] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
@@ -74,20 +75,7 @@ export function DiagnosisResult({
 
     SpeechVoiceManager.stop();
 
-    let textToSpeak = '';
-    if (targetLang === 'mr') {
-      textToSpeak =
-        diagnosis.local_voice_script_marathi ||
-        `सावधान! ${diagnosis.animal_identified || 'प्राणी'} मध्ये ${diagnosis.suspected_condition} चे लक्षण आढळले आहे. तातडीने प्रथमोपचार करा आणि १९६२ वर संपर्क करा.`;
-    } else if (targetLang === 'hi') {
-      textToSpeak =
-        diagnosis.local_voice_script_hindi ||
-        `सावधान! ${diagnosis.animal_identified || 'पशु'} में ${diagnosis.suspected_condition} के लक्षण पाए गए हैं। तुरंत प्राथमिक उपचार करें और 1962 पर संपर्क करें।`;
-    } else {
-      textToSpeak =
-        diagnosis.local_voice_script_english ||
-        `Alert! Suspected condition in ${diagnosis.animal_identified || 'animal'}: ${diagnosis.suspected_condition}. Please follow first-aid instructions.`;
-    }
+    const textToSpeak = buildTriageVoiceScript(diagnosis, targetLang, voiceMode);
 
     setActiveVoiceLang(targetLang);
     SpeechVoiceManager.speakText(
@@ -288,158 +276,228 @@ export function DiagnosisResult({
       </div>
 
       <div className="p-5 sm:p-8 space-y-7">
-        {/* 2. Audio Voice Scripts (Hindi & Marathi Text-to-Speech) */}
-        <div className="bg-black/30 rounded-2xl p-5 border border-white/10 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        {/* 2. Audio Voice Scripts (Hindi, Marathi & English Text-to-Speech) */}
+        <div className="bg-black/40 rounded-2xl p-5 border border-white/10 space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="font-bold text-sm sm:text-base text-white flex items-center space-x-2.5">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
                 <Volume2 className="w-4 h-4" />
               </div>
-              <span>
-                {t.audioGuidanceTitle}
-              </span>
+              <div className="flex flex-col">
+                <span>{t.audioGuidanceTitle}</span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  {currentLang === 'mr'
+                    ? 'अचूक उच्चारांसह मराठी, हिंदी व इंग्रजी आवाज'
+                    : currentLang === 'hi'
+                    ? 'सटीक उच्चारण के साथ मराठी, हिंदी व अंग्रेजी आवाज'
+                    : 'Clear natural spoken guidance in Marathi, Hindi & English'}
+                </span>
+              </div>
             </h3>
 
-            <div className="flex items-center space-x-2">
-              <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full hidden sm:inline">
-                {activeVoiceLang === 'mr'
-                  ? 'मराठीत वाचन सुरू आहे...'
-                  : activeVoiceLang === 'hi'
-                  ? 'हिंदी में वाचन शुरू है...'
-                  : activeVoiceLang === 'en'
-                  ? 'NOW PLAYING ENGLISH AUDIO...'
-                  : (currentLang === 'mr' ? 'ध्वनी वाचन उपलब्ध' : currentLang === 'hi' ? 'ध्वनि वाचन उपलब्ध' : 'AUDIO AVAILABLE')}
-              </span>
+            {/* Mode Selector (Full Triage Guide vs Quick Summary) */}
+            <div className="flex items-center bg-white/5 border border-white/10 p-1 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeVoiceLang) SpeechVoiceManager.stop();
+                  setActiveVoiceLang(null);
+                  setVoiceMode('full');
+                }}
+                className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                  voiceMode === 'full'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {currentLang === 'mr' ? 'संपूर्ण मार्गदर्शन' : currentLang === 'hi' ? 'पूरा मार्गदर्शन' : 'Full Guide'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeVoiceLang) SpeechVoiceManager.stop();
+                  setActiveVoiceLang(null);
+                  setVoiceMode('summary');
+                }}
+                className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                  voiceMode === 'summary'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {currentLang === 'mr' ? 'थोडक्यात' : currentLang === 'hi' ? 'संक्षिप्त' : 'Summary'}
+              </button>
             </div>
           </div>
 
-          <p className="text-xs text-slate-300">
-            {currentLang === 'hi'
-              ? 'नीचे दिए गए बटन पर क्लिक करके सीधे मराठी, हिंदी या अंग्रेजी में सटीक ऑडियो सलाह सुनें।'
-              : currentLang === 'mr'
-              ? 'खालील बटणावर क्लिक करून थेट मराठी, हिंदी किंवा इंग्रजीत अचूक ऑडिओ सल्ला ऐका.'
-              : 'Click on the buttons below to listen to clear voice advice in Marathi, Hindi, or English.'}
-          </p>
+          {/* Active playback banner */}
+          {activeVoiceLang && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs animate-fadeIn">
+              <div className="flex items-center space-x-2.5">
+                <div className="flex items-center space-x-1 h-4">
+                  <span className="w-1 h-3 bg-emerald-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                  <span className="w-1 h-4 bg-emerald-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                  <span className="w-1 h-2 bg-emerald-400 rounded-full animate-bounce"></span>
+                </div>
+                <span className="font-semibold">
+                  {activeVoiceLang === 'mr'
+                    ? 'मराठीत ऑडिओ सुरू आहे...'
+                    : activeVoiceLang === 'hi'
+                    ? 'हिंदी में ऑडियो शुरू है...'
+                    : 'Playing English audio advice...'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  SpeechVoiceManager.stop();
+                  setActiveVoiceLang(null);
+                }}
+                className="flex items-center space-x-1 px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition shadow cursor-pointer"
+              >
+                <VolumeX className="w-3.5 h-3.5" />
+                <span>{currentLang === 'mr' ? 'थांबवा' : currentLang === 'hi' ? 'रोकें' : 'Stop Audio'}</span>
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* 1. Marathi Voice Card */}
             <div
-              className={`p-4 rounded-2xl border transition ${
+              className={`p-4 rounded-2xl border transition flex flex-col justify-between ${
                 activeVoiceLang === 'mr'
                   ? 'bg-emerald-950/70 border-emerald-400 ring-2 ring-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
                   : 'bg-white/5 border-white/10 hover:border-emerald-500/30'
               }`}
             >
-              <div className="flex items-center justify-between mb-2.5">
-                <span className="font-bold text-xs text-emerald-400 flex items-center space-x-1.5">
-                  <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'mr' ? 'bg-red-400 animate-ping' : 'bg-emerald-400'}`}></span>
-                  <span>ऑडिओ (मराठी)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handlePlayVoice('mr')}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
-                    activeVoiceLang === 'mr'
-                      ? 'bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                  }`}
-                >
-                  {activeVoiceLang === 'mr' ? (
-                    <>
-                      <VolumeX className="w-3.5 h-3.5" />
-                      <span>थांबवा (Stop)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>मराठीत ऐका</span>
-                    </>
-                  )}
-                </button>
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="font-bold text-xs text-emerald-400 flex items-center space-x-1.5">
+                    <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'mr' ? 'bg-red-400 animate-ping' : 'bg-emerald-400'}`}></span>
+                    <span>ऑडिओ (मराठी)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handlePlayVoice('mr')}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
+                      activeVoiceLang === 'mr'
+                        ? 'bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                    }`}
+                  >
+                    {activeVoiceLang === 'mr' ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5" />
+                        <span>थांबवा</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>मराठीत ऐका</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-200 leading-relaxed italic line-clamp-4">
+                  "{diagnosis.local_voice_script_marathi || `पशु आरोग्य तपासणी: ${diagnosis.animal_identified} मध्ये ${diagnosis.suspected_condition} चे लक्षण आढळले आहे. तातडीने प्रथमोपचार करा आणि १९६२ वर संपर्क करा.`}"
+                </p>
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed italic">
-                "{diagnosis.local_voice_script_marathi || `सावधान! ${diagnosis.animal_identified || 'प्राणी'} मध्ये ${diagnosis.suspected_condition} चे लक्षण आढळले आहे. तातडीने प्रथमोपचार करा आणि १९६२ वर संपर्क करा.`}"
-              </p>
+              <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-slate-400 flex items-center justify-between">
+                <span>{voiceMode === 'full' ? 'संपूर्ण सूचना (Full)' : 'संक्षिप्त (Summary)'}</span>
+                <span className="text-emerald-400 font-mono">1962 मदतवाहिनी</span>
+              </div>
             </div>
 
             {/* 2. Hindi Voice Card */}
             <div
-              className={`p-4 rounded-2xl border transition ${
+              className={`p-4 rounded-2xl border transition flex flex-col justify-between ${
                 activeVoiceLang === 'hi'
                   ? 'bg-amber-950/70 border-amber-400 ring-2 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
                   : 'bg-white/5 border-white/10 hover:border-amber-500/30'
               }`}
             >
-              <div className="flex items-center justify-between mb-2.5">
-                <span className="font-bold text-xs text-amber-300 flex items-center space-x-1.5">
-                  <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'hi' ? 'bg-red-400 animate-ping' : 'bg-amber-400'}`}></span>
-                  <span>ऑडियो (हिन्दी)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handlePlayVoice('hi')}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
-                    activeVoiceLang === 'hi'
-                      ? 'bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'
-                      : 'bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]'
-                  }`}
-                >
-                  {activeVoiceLang === 'hi' ? (
-                    <>
-                      <VolumeX className="w-3.5 h-3.5" />
-                      <span>रोकें (Stop)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>हिंदी में सुनें</span>
-                    </>
-                  )}
-                </button>
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="font-bold text-xs text-amber-300 flex items-center space-x-1.5">
+                    <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'hi' ? 'bg-red-400 animate-ping' : 'bg-amber-400'}`}></span>
+                    <span>ऑडियो (हिन्दी)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handlePlayVoice('hi')}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
+                      activeVoiceLang === 'hi'
+                        ? 'bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'
+                        : 'bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                    }`}
+                  >
+                    {activeVoiceLang === 'hi' ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5" />
+                        <span>रोकें</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>हिंदी में सुनें</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-200 leading-relaxed italic line-clamp-4">
+                  "{diagnosis.local_voice_script_hindi || `पशु स्वास्थ्य जाँच: ${diagnosis.animal_identified} में ${diagnosis.suspected_condition} के लक्षण पाए गए हैं। तुरंत प्राथमिक उपचार करें और 1962 पर कॉल करें।`}"
+                </p>
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed italic">
-                "{diagnosis.local_voice_script_hindi || `सावधान! ${diagnosis.animal_identified || 'पशु'} में ${diagnosis.suspected_condition} के लक्षण पाए गए हैं। तुरंत प्राथमिक उपचार करें और 1962 पर संपर्क करें।`}"
-              </p>
+              <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-slate-400 flex items-center justify-between">
+                <span>{voiceMode === 'full' ? 'पूर्ण मार्गदर्शन (Full)' : 'संक्षिप्त (Summary)'}</span>
+                <span className="text-amber-300 font-mono">1962 हेल्पलाइन</span>
+              </div>
             </div>
 
             {/* 3. English Voice Card */}
             <div
-              className={`p-4 rounded-2xl border transition ${
+              className={`p-4 rounded-2xl border transition flex flex-col justify-between ${
                 activeVoiceLang === 'en'
                   ? 'bg-sky-950/70 border-sky-400 ring-2 ring-sky-500/40 shadow-[0_0_20px_rgba(56,189,248,0.3)]'
                   : 'bg-white/5 border-white/10 hover:border-sky-500/30'
               }`}
             >
-              <div className="flex items-center justify-between mb-2.5">
-                <span className="font-bold text-xs text-sky-300 flex items-center space-x-1.5">
-                  <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'en' ? 'bg-red-400 animate-ping' : 'bg-sky-400'}`}></span>
-                  <span>Audio (English)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handlePlayVoice('en')}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
-                    activeVoiceLang === 'en'
-                      ? 'bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'
-                      : 'bg-sky-700 hover:bg-sky-600 text-white shadow-[0_0_10px_rgba(14,165,233,0.3)]'
-                  }`}
-                >
-                  {activeVoiceLang === 'en' ? (
-                    <>
-                      <VolumeX className="w-3.5 h-3.5" />
-                      <span>Stop</span>
-                    </>
-                  ) : (
-                    <>
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>Listen in English</span>
-                    </>
-                  )}
-                </button>
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="font-bold text-xs text-sky-300 flex items-center space-x-1.5">
+                    <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'en' ? 'bg-red-400 animate-ping' : 'bg-sky-400'}`}></span>
+                    <span>Audio (English)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handlePlayVoice('en')}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 cursor-pointer ${
+                      activeVoiceLang === 'en'
+                        ? 'bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'
+                        : 'bg-sky-700 hover:bg-sky-600 text-white shadow-[0_0_10px_rgba(14,165,233,0.3)]'
+                    }`}
+                  >
+                    {activeVoiceLang === 'en' ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5" />
+                        <span>Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>Listen in English</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed italic line-clamp-4">
+                  "{diagnosis.local_voice_script_english || `Triage Alert: Suspected ${diagnosis.suspected_condition} in ${diagnosis.animal_identified}. Follow recommended first-aid care.`}"
+                </p>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed italic">
-                "{diagnosis.local_voice_script_english || `Alert! In ${diagnosis.animal_identified || 'animal'}, suspected condition is ${diagnosis.suspected_condition}. Follow veterinary guidance.`}"
-              </p>
+              <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-slate-400 flex items-center justify-between">
+                <span>{voiceMode === 'full' ? 'Full Step-by-Step' : 'Summary'}</span>
+                <span className="text-sky-300 font-mono">1962 Helpline</span>
+              </div>
             </div>
           </div>
         </div>

@@ -47,6 +47,47 @@ app.get('/api/health', (req, res) => {
 });
 
 // Text-To-Speech (TTS) endpoint supporting Marathi, Hindi, and English
+// In-memory cache for synthesized audio chunks/results to optimize response times
+const ttsAudioCache = new Map<string, Buffer>();
+
+function splitTextIntoSafeTtsChunks(text: string, maxLen = 75): string[] {
+  const parts = text.split(/([।\n.!?;,]+)/);
+  const chunks: string[] = [];
+  let buffer = '';
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part) continue;
+
+    if (/^[।\n.!?;,]+$/.test(part)) {
+      buffer += part;
+      if (buffer.trim().length > 0) {
+        chunks.push(buffer.trim());
+        buffer = '';
+      }
+    } else {
+      const words = part.split(/\s+/);
+      for (const w of words) {
+        if (!w) continue;
+        if ((buffer + ' ' + w).trim().length > maxLen) {
+          if (buffer.trim().length > 0) {
+            chunks.push(buffer.trim());
+          }
+          buffer = w;
+        } else {
+          buffer = buffer ? buffer + ' ' + w : w;
+        }
+      }
+    }
+  }
+
+  if (buffer.trim().length > 0) {
+    chunks.push(buffer.trim());
+  }
+
+  return chunks.filter((c) => c.length > 0);
+}
+
 const ttsHandler: express.RequestHandler = async (req, res) => {
   try {
     const rawText = String(req.method === 'POST' ? req.body?.text : req.query?.text || '').trim();
@@ -57,33 +98,35 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
       return;
     }
 
-    const ttsLang = lang === 'mr' ? 'mr' : lang === 'hi' ? 'hi' : 'en';
+    const ttsLang = lang === 'mr' ? 'mr' : lang === 'hi' ? 'hi' : 'en-IN';
 
-    // Clean text and split into manageable chunks under Google TTS limit (approx 180 chars)
+    // Remove emojis, markdown, and normalize whitespace
     const sanitized = rawText
-      .replace(/["“”«»*_#`~]/g, ' ')
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/gu, '')
+      .replace(/["“”«»*_#`~()\[\]]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
-    const maxChunkLength = 180;
-    const rawSentences = sanitized.split(/([।\n.!?]+)/);
-    const chunks: string[] = [];
-    let current = '';
+    if (!sanitized) {
+      res.status(400).json({ error: 'Text contained only emojis or invalid characters' });
+      return;
+    }
 
-    for (const part of rawSentences) {
-      if ((current + part).length > maxChunkLength) {
-        if (current.trim()) chunks.push(current.trim());
-        current = part;
-      } else {
-        current += part;
-      }
+    const cacheKey = `${ttsLang}:${sanitized}`;
+    if (ttsAudioCache.has(cacheKey)) {
+      const cached = ttsAudioCache.get(cacheKey)!;
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(cached);
+      return;
     }
-    if (current.trim()) {
-      chunks.push(current.trim());
-    }
+
+    // Split safely into small chunks (under 75 chars) so Google TTS tw-ob never returns HTTP 400
+    const chunks = splitTextIntoSafeTtsChunks(sanitized, 75);
 
     if (chunks.length === 0) {
-      chunks.push(sanitized.slice(0, maxChunkLength));
+      res.status(400).json({ error: 'No readable speech chunks' });
+      return;
     }
 
     const audioBuffers: Buffer[] = [];
@@ -91,21 +134,52 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
       const trimmed = chunk.trim();
       if (!trimmed) continue;
 
+      const chunkCacheKey = `${ttsLang}:chunk:${trimmed}`;
+      if (ttsAudioCache.has(chunkCacheKey)) {
+        audioBuffers.push(ttsAudioCache.get(chunkCacheKey)!);
+        continue;
+      }
+
       const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(
         ttsLang
       )}&q=${encodeURIComponent(trimmed)}`;
 
-      const ttsRes = await fetch(ttsUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://translate.google.com/',
-        },
-      });
+      try {
+        const ttsRes = await fetch(ttsUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Referer: 'https://translate.google.com/',
+          },
+        });
 
-      if (ttsRes.ok) {
-        const arrayBuf = await ttsRes.arrayBuffer();
-        audioBuffers.push(Buffer.from(arrayBuf));
+        if (ttsRes.ok) {
+          const arrayBuf = await ttsRes.arrayBuffer();
+          const buf = Buffer.from(arrayBuf);
+          ttsAudioCache.set(chunkCacheKey, buf);
+          audioBuffers.push(buf);
+        } else {
+          // If en-IN failed, try standard 'en'
+          if (ttsLang === 'en-IN') {
+            const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(
+              trimmed
+            )}`;
+            const fallbackRes = await fetch(fallbackUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                Referer: 'https://translate.google.com/',
+              },
+            });
+            if (fallbackRes.ok) {
+              const arrayBuf = await fallbackRes.arrayBuffer();
+              const buf = Buffer.from(arrayBuf);
+              ttsAudioCache.set(chunkCacheKey, buf);
+              audioBuffers.push(buf);
+            }
+          }
+        }
+      } catch (chunkErr) {
+        console.warn('Error fetching audio chunk:', chunkErr);
       }
     }
 
@@ -115,6 +189,11 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
     }
 
     const combined = Buffer.concat(audioBuffers);
+    if (ttsAudioCache.size > 200) {
+      ttsAudioCache.clear();
+    }
+    ttsAudioCache.set(cacheKey, combined);
+
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(combined);

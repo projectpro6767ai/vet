@@ -97,8 +97,9 @@ OUTPUT FORMAT (Raw JSON only):
   ],
   "what_not_to_do": "Common mistake to avoid (in ${targetLangName})",
   "recommended_local_product": "Generic herbal product or remedy (in ${targetLangName})",
-  "local_voice_script_hindi": "Simple 2-sentence summary in Hindi script",
-  "local_voice_script_marathi": "Simple 2-sentence summary in Marathi script"
+  "local_voice_script_english": "Natural spoken 2-sentence conversational advice in English for voice readout without any emojis or markdown symbols",
+  "local_voice_script_hindi": "Natural spoken 2-sentence conversational advice in Hindi without any emojis",
+  "local_voice_script_marathi": "Natural spoken 2-sentence conversational advice in Marathi without any emojis"
 }`;
 
     const promptParts: any[] = [];
@@ -170,6 +171,10 @@ Provide an accurate, balanced veterinary triage diagnosis based strictly on the 
                 },
                 what_not_to_do: { type: Type.STRING },
                 recommended_local_product: { type: Type.STRING },
+                local_voice_script_english: {
+                  type: Type.STRING,
+                  description: 'Fluent spoken English advice for voice readout without emojis',
+                },
                 local_voice_script_hindi: { type: Type.STRING },
                 local_voice_script_marathi: { type: Type.STRING },
               },
@@ -179,6 +184,7 @@ Provide an accurate, balanced veterinary triage diagnosis based strictly on the 
                 'first_aid_steps',
                 'what_not_to_do',
                 'recommended_local_product',
+                'local_voice_script_english',
                 'local_voice_script_hindi',
                 'local_voice_script_marathi',
               ],
@@ -228,10 +234,13 @@ Provide an accurate, balanced veterinary triage diagnosis based strictly on the 
           doctorStatus = 'Moderate case: Monitor for 24 hours. If symptoms persist or worsen, contact local paravet.';
         }
 
+        const cleanCondition = String(parsedJson.suspected_condition || 'Condition Under Observation').replace(/[\u{1F300}-\u{1F9FF}]/gu, '');
+        const animalLabel = parsedJson.animal_identified || parsedJson.animal_type || animalType || 'Livestock';
+
         return {
           app_name: 'Vet-Mitra AI',
-          animal_identified: parsedJson.animal_identified || parsedJson.animal_type || animalType || 'Livestock',
-          suspected_condition: parsedJson.suspected_condition,
+          animal_identified: animalLabel,
+          suspected_condition: cleanCondition,
           urgency_badge: urgencyBadge,
           is_emergency_dispatch_needed: isEmergency,
           trigger_emergency_dispatch: isEmergency,
@@ -241,9 +250,15 @@ Provide an accurate, balanced veterinary triage diagnosis based strictly on the 
             : ['Provide clean water and easily digestible fodder.', 'Keep animal in a dry, ventilated shed.'],
           what_not_to_do: parsedJson.what_not_to_do || 'Do not administer human medications without veterinary consultation.',
           recommended_local_product: parsedJson.recommended_local_product || 'Electrolyte Powder, Neem Decoction',
-          local_voice_script_english: `Condition: ${parsedJson.suspected_condition}. Triage: ${urgencyBadge}.`,
-          local_voice_script_hindi: parsedJson.local_voice_script_hindi || 'पशु की स्थिति की जांच करें और प्राथमिक उपचार दें।',
-          local_voice_script_marathi: parsedJson.local_voice_script_marathi || 'जनावराची पाहणी करा आणि प्रथमोपचार करा.',
+          local_voice_script_english:
+            parsedJson.local_voice_script_english ||
+            `Alert: Suspected condition in ${animalLabel} is ${cleanCondition}. Please follow the recommended first-aid steps immediately.`,
+          local_voice_script_hindi:
+            parsedJson.local_voice_script_hindi ||
+            `सावधान! ${animalLabel} में ${cleanCondition} के लक्षण पाए गए हैं। तुरंत प्राथमिक उपचार करें और 1962 पर संपर्क करें।`,
+          local_voice_script_marathi:
+            parsedJson.local_voice_script_marathi ||
+            `सावधान! ${animalLabel} मध्ये ${cleanCondition} चे लक्षण आढळले आहे. तातडीने प्रथमोपचार करा आणि १९६२ वर संपर्क करा.`,
           source: 'gemini_ai',
           model_used: usedModel,
         };
