@@ -472,7 +472,7 @@ export default function App() {
       console.error('Network diagnosis failed, attempting On-Device Edge fallback:', err);
       // Seamless On-Device Edge AI Fallback for rural Taluka zones
       try {
-        const edgeRes = runOfflineEdgeInference(selectedAnimal, symptomsText);
+        const edgeRes = runOfflineEdgeInference(selectedAnimal, symptomsText, imagePreview, currentLang);
         setDiagnosis(edgeRes.diagnosis);
         saveToHistory(edgeRes.diagnosis);
         window.scrollTo({ top: 120, behavior: 'smooth' });

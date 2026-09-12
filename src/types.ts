@@ -12,6 +12,9 @@ export interface VetDiagnosisResponse {
   local_voice_script_english: string;
   local_voice_script_hindi: string;
   local_voice_script_marathi: string;
+  source?: 'gemini_ai' | 'clinical_rule_engine' | 'offline_edge';
+  model_used?: string;
+  diagnostic_note?: string;
 }
 
 export type UrgencyLevel = 'green' | 'yellow' | 'red';

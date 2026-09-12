@@ -164,11 +164,32 @@ export function DiagnosisResult({
               {diagnosis.suspected_condition}
             </h2>
 
-            <div className="flex items-center space-x-2 text-sm text-slate-300">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
               <span className="font-semibold text-slate-400">{t.identifiedAnimal}:</span>
               <span className="bg-white/10 border border-white/10 px-2.5 py-0.5 rounded-lg font-bold text-white">
                 {diagnosis.animal_identified}
               </span>
+
+              {diagnosis.source === 'gemini_ai' && (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Google Gemini AI ({diagnosis.model_used || 'gemini-3.8-flash'})</span>
+                </span>
+              )}
+
+              {diagnosis.source === 'clinical_rule_engine' && (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  <span>Veterinary Clinical Engine</span>
+                </span>
+              )}
+
+              {diagnosis.source === 'offline_edge' && (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span>On-Device TFLite Edge</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -254,6 +275,14 @@ export function DiagnosisResult({
                 {t.emergencyDispatchSub}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Engine Diagnostic Note if present */}
+        {diagnosis.diagnostic_note && (
+          <div className="mt-4 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-200 text-xs flex items-start space-x-2.5 backdrop-blur-md">
+            <span className="text-base shrink-0">💡</span>
+            <span className="leading-relaxed">{diagnosis.diagnostic_note}</span>
           </div>
         )}
       </div>
