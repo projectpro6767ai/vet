@@ -158,19 +158,6 @@ export interface FodderQualityReport {
   timestamp: number;
 }
 
-// 3. Offline IVR / Missed-Call Audio Relay
-export interface IvrRelayCall {
-  callId: string;
-  phoneNumber: string;
-  language: SupportedLanguage;
-  dialect: string;
-  timestamp: number;
-  status: 'QUEUED' | 'RINGING' | 'IN_PROGRESS' | 'COMPLETED' | 'SMS_SENT';
-  durationSeconds: number;
-  audioScriptPreview: string;
-  smsTranscript: string;
-}
-
 // 4. Interactive Body Map Hotspot
 export interface AnimalBodyHotspot {
   id: string;

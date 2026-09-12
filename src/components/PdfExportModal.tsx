@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileText,
-  Printer,
   Download,
   QrCode as QrIcon,
   X,
@@ -63,10 +62,6 @@ export function PdfExportModal({
 
   if (!isOpen) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleSavePdf = () => {
     downloadClinicalReportPdf(diagnosis, {
       docketNumber,
@@ -112,7 +107,7 @@ export function PdfExportModal({
                   ? 'तालुका पशुवैद्यकीय दवाखान्यासाठी अधिकृत अहवाल'
                   : currentLang === 'hi'
                   ? 'तालुका पशु चिकित्सालय के लिए आधिकारिक पर्ची'
-                  : 'Print or export official diagnostic paperwork for Taluka Para-vets and Dispensaries'}
+                  : 'Export official diagnostic paperwork for Taluka Para-vets and Dispensaries'}
               </p>
             </div>
           </div>
@@ -137,17 +132,7 @@ export function PdfExportModal({
               )}
             </button>
 
-            {/* 2. Dedicated Print Button */}
-            <button
-              onClick={handlePrint}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/10 transition cursor-pointer shadow active:scale-95 whitespace-nowrap"
-              title="Open System Print Dialog"
-            >
-              <Printer className="w-4 h-4 text-emerald-400" />
-              <span>{t.print || 'Print'}</span>
-            </button>
-
-            {/* 3. JSON Export */}
+            {/* 2. JSON Export */}
             <button
               onClick={handleDownloadJson}
               className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs transition"

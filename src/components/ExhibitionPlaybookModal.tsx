@@ -227,7 +227,7 @@ export function ExhibitionPlaybookModal({
           {activeTab === 'POSTER_FLOW' && (
             <div className="space-y-4">
               <div className="text-xs text-slate-300 leading-relaxed">
-                Recommended 6ft x 3ft Stall Banner Layout. Print or project this workflow at your live booth:
+                Recommended 6ft x 3ft Stall Banner Layout. Display or project this workflow at your live booth:
               </div>
 
               <div className="p-5 rounded-2xl bg-[#101712] border border-white/15 space-y-4">
@@ -268,7 +268,7 @@ export function ExhibitionPlaybookModal({
                     </span>
                     <h5 className="text-xs font-bold text-white">Actionable First-Aid</h5>
                     <p className="text-[11px] text-slate-400">
-                      TANUVAS-certified Ayurvedic dosages (Asafoetida, Batisa) + IVR feature-phone audio
+                      TANUVAS-certified Ayurvedic dosages (Asafoetida, Batisa) + regional audio triage
                     </p>
                   </div>
 
@@ -278,7 +278,7 @@ export function ExhibitionPlaybookModal({
                     </span>
                     <h5 className="text-xs font-bold text-white">1962 MVU Dispatch</h5>
                     <p className="text-[11px] text-slate-400">
-                      Live GPS telemetry dispatch to nearest Taluka ambulance with printable clinical QR docket
+                      Live GPS telemetry dispatch to nearest Taluka ambulance with digital clinical QR docket
                     </p>
                   </div>
                 </div>
@@ -306,7 +306,7 @@ export function ExhibitionPlaybookModal({
                       <li>• Interactive Visual Body Map (no typing required)</li>
                       <li>• Regional Marathi voice recording</li>
                       <li>• Smart camera with lesion heatmaps & fodder scanner</li>
-                      <li>• IVR missed-call playback</li>
+                      <li>• Multilingual audio playback & speech guidance</li>
                     </ul>
                   </div>
 

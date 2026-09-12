@@ -14,6 +14,11 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Copy,
+  Check,
+  ExternalLink,
+  Globe,
+  Info,
 } from 'lucide-react';
 import { SupportedLanguage, AppUser } from '../types';
 import {
@@ -21,6 +26,8 @@ import {
   signUpWithEmailPass,
   signInWithEmailPass,
   signOutFirebase,
+  getFirebaseConsoleLinks,
+  FirebaseAuthResult,
 } from '../lib/firebase';
 import {
   signInWithEmail,
@@ -58,10 +65,19 @@ export function AuthModal({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authErrorDetails, setAuthErrorDetails] = useState<{
+    code?: string;
+    domain?: string;
+    actionType?: 'add_authorized_domain' | 'enable_google_provider' | 'popup_blocked' | 'user_closed' | 'generic';
+    message?: string;
+  } | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const isHindi = currentLang === 'hi';
   const isMarathi = currentLang === 'mr';
+  const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const consoleLinks = getFirebaseConsoleLinks();
 
   const resetForm = () => {
     setEmail('');
@@ -70,6 +86,7 @@ export function AuthModal({
     setFullName('');
     setFarmName('');
     setError(null);
+    setAuthErrorDetails(null);
     setSuccessMsg(null);
   };
 
@@ -249,12 +266,14 @@ export function AuthModal({
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError(null);
+    setAuthErrorDetails(null);
     setSuccessMsg(null);
 
-    // 1. Try Firebase Google Popup OAuth
+    // Try Firebase Google Popup OAuth
     const fbResult = await signInWithGooglePopup();
+    setLoading(false);
+
     if (fbResult.user) {
-      setLoading(false);
       setSuccessMsg(
         isHindi
           ? `नमस्ते, ${fbResult.user.displayName || 'किसान मित्र'}! गूगल से लॉग इन हो गए।`
@@ -280,11 +299,50 @@ export function AuthModal({
       return;
     }
 
-    // 2. Fallback to Supabase OAuth
-    const res = await signInWithGoogle();
-    setLoading(false);
-    if (res.error && fbResult.error) {
-      setError(fbResult.error || res.error);
+    if (fbResult.error) {
+      const currentHost = fbResult.domain || (typeof window !== 'undefined' ? window.location.hostname : '');
+      setAuthErrorDetails({
+        code: fbResult.errorCode,
+        domain: currentHost,
+        actionType: fbResult.actionType,
+        message: fbResult.error,
+      });
+
+      if (fbResult.actionType === 'add_authorized_domain') {
+        setError(
+          isHindi
+            ? `डोमेन अधिकृत नहीं है: Firebase Console में '${currentHost}' जोड़ें।`
+            : isMarathi
+            ? `डोमेन अधिकृत नाही: Firebase Console मध्ये '${currentHost}' जोडा.`
+            : `Domain not authorized: Please add '${currentHost}' to Authorized Domains in Firebase Console.`
+        );
+      } else if (fbResult.actionType === 'enable_google_provider') {
+        setError(
+          isHindi
+            ? 'Firebase Console में Google साइन-इन प्रदाता सक्षम करें।'
+            : isMarathi
+            ? 'Firebase Console मध्ये Google साइन-इन प्रदाता सुरू करा.'
+            : 'Google Sign-In is disabled for project vet-123 in Firebase Console.'
+        );
+      } else if (fbResult.actionType === 'popup_blocked') {
+        setError(
+          isHindi
+            ? 'पॉपअप विंडो ब्लॉक हो गई। कृपया ऐप को नए टैब में खोलें या नीचे ईमेल/पासवर्ड से लॉगिन करें।'
+            : isMarathi
+            ? 'पॉपअप विंडो ब्लॉक झाली. कृपया अॅप नवीन टॅबमध्ये उघडा किंवा खाली ईमेल/पासवर्डने लॉगिन करा.'
+            : 'Popup blocked by browser/iframe. Please open in a new tab or use Email & Password below.'
+        );
+      } else if (fbResult.actionType === 'user_closed') {
+        setError(
+          isHindi
+            ? 'साइन-इन पूरा होने से पहले विंडो बंद कर दी गई थी।'
+            : isMarathi
+            ? 'साइन-इन पूर्ण होण्यापूर्वी विंडो बंद केली गेली होती.'
+            : 'Sign-in window was closed before completing.'
+        );
+      } else {
+        setError(fbResult.error);
+      }
     }
   };
 
@@ -348,16 +406,29 @@ export function AuthModal({
                   ? 'पशु चिकित्सा रिपोर्ट सिंक व सुरक्षित डेटा'
                   : isMarathi
                   ? 'पशु वैद्यकीय अहवाल सिंक व सुरक्षित डेटा'
-                  : 'Supabase Cloud Authentication'}
+                  : 'Firebase Cloud Authentication (vet-123)'}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white bg-white/5 border border-white/10 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {isInIframe && (
+              <button
+                type="button"
+                onClick={() => window.open(window.location.href, '_blank')}
+                className="p-1.5 px-2 rounded-xl text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer flex items-center space-x-1 text-[11px] font-mono transition"
+                title="Open app in full tab to prevent iframe popup issues"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">New Tab</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white bg-white/5 border border-white/10 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -367,6 +438,136 @@ export function AuthModal({
             <div className="p-3.5 rounded-2xl bg-red-950/60 border border-red-500/40 text-red-300 text-xs flex items-start space-x-2.5 shadow-lg">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <span className="leading-relaxed">{error}</span>
+            </div>
+          )}
+
+          {/* Actionable Diagnostic Card for Domain Authorization */}
+          {authErrorDetails?.actionType === 'add_authorized_domain' && authErrorDetails.domain && (
+            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-3 shadow-xl">
+              <div className="flex items-start space-x-2.5">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-amber-200">
+                    {isHindi
+                      ? 'Firebase Console में यह डोमेन अधिकृत करें'
+                      : isMarathi
+                      ? 'Firebase Console मध्ये हा डोमेन अधिकृत करा'
+                      : 'Authorize this Domain in Firebase Console'}
+                  </h4>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {isHindi
+                      ? `गूगल सुरक्षा के लिए आपके Firebase प्रोजेक्ट (${consoleLinks.projectId}) में इस डोमेन को Authorized Domains में जोड़ना आवश्यक है:`
+                      : isMarathi
+                      ? `गुगल सुरक्षेसाठी तुमच्या Firebase प्रोजेक्ट (${consoleLinks.projectId}) मध्ये हा डोमेन Authorized Domains मध्ये जोडणे आवश्यक आहे:`
+                      : `Firebase requires this domain to be added to Authorized Domains for project "${consoleLinks.projectId}":`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Domain Display & 1-Click Copy */}
+              <div className="flex items-center justify-between p-2 rounded-xl bg-black/70 border border-white/10 font-mono text-[11px]">
+                <span className="text-emerald-400 font-semibold truncate select-all px-1">
+                  {authErrorDetails.domain}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(authErrorDetails.domain || '');
+                    setCopiedDomain(true);
+                    setTimeout(() => setCopiedDomain(false), 2000);
+                  }}
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shrink-0 ml-2 cursor-pointer shadow active:scale-95"
+                  title="Copy domain to clipboard"
+                >
+                  {copiedDomain ? <Check className="w-3 h-3 text-white" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedDomain ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              {/* 3 Quick Steps */}
+              <div className="text-[11px] text-slate-300 space-y-1.5 pl-1">
+                <div className="flex items-center justify-between">
+                  <span>1. Open Firebase Console:</span>
+                  <a
+                    href={consoleLinks.settingsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 underline font-semibold text-xs"
+                  >
+                    <span>Console Settings</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <p>2. In <strong>Authorized domains</strong>, click <strong>Add domain</strong>.</p>
+                <p>3. Paste <strong>{authErrorDetails.domain}</strong> and click <strong>Add</strong>.</p>
+              </div>
+
+              {/* Instant Alternative note */}
+              <div className="pt-2 border-t border-white/10 text-[11px] text-emerald-300 flex items-start space-x-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>
+                  {isHindi
+                    ? '⚡ त्वरित उपाय: आप बिना डोमेन जोड़े भी नीचे ईमेल और पासवर्ड से तुरंत खाता बनाकर लॉगिन कर सकते हैं!'
+                    : isMarathi
+                    ? '⚡ त्वरित पर्याय: तुम्ही डोमेन न जोडताही खालील ईमेल आणि पासवर्डने लगेच खाते तयार करून लॉगिन करू शकता!'
+                    : '⚡ Instant alternative: You can also sign up or log in using Email & Password below right now without domain setup!'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Actionable Diagnostic Card for Enabling Google Provider */}
+          {authErrorDetails?.actionType === 'enable_google_provider' && (
+            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-3 shadow-xl">
+              <div className="flex items-start space-x-2.5">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                  <Info className="w-4 h-4" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-amber-200">
+                    {isHindi ? 'Google साइन-इन प्रदाता सक्षम करें' : isMarathi ? 'Google साइन-इन प्रदाता सुरू करा' : 'Enable Google Provider in Firebase'}
+                  </h4>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {isHindi
+                      ? `प्रोजेक्ट (${consoleLinks.projectId}) में Google साइन-इन को चालू करना आवश्यक है:`
+                      : isMarathi
+                      ? `प्रोजेक्ट (${consoleLinks.projectId}) मध्ये Google साइन-इन सुरू करणे आवश्यक आहे:`
+                      : `Google sign-in must be enabled in Firebase Console for project "${consoleLinks.projectId}":`}
+                  </p>
+                  <div className="pt-1">
+                    <a
+                      href={consoleLinks.providersUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow transition cursor-pointer"
+                    >
+                      <span>Open Sign-in Providers</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Actionable Diagnostic Card for Popup Blocked */}
+          {authErrorDetails?.actionType === 'popup_blocked' && (
+            <div className="p-4 rounded-2xl bg-blue-950/40 border border-blue-500/40 space-y-2.5 shadow-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-blue-200 font-semibold">
+                  {isHindi ? 'पॉपअप विंडो को ब्राउज़र में अनुमति दें या नए टैब में खोलें' : isMarathi ? 'पॉपअप विंडोला अनुमती द्या किंवा नवीन टॅबमध्ये उघडा' : 'Open in a full browser tab to prevent iframe popup blocks'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => window.open(window.location.href, '_blank')}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center space-x-1 shadow transition cursor-pointer"
+                >
+                  <span>Open in Tab</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           )}
 

@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -36,10 +37,21 @@ const firebaseConfig = {
   storageBucket: firebaseConfigJson.storageBucket,
   messagingSenderId: firebaseConfigJson.messagingSenderId,
   appId: firebaseConfigJson.appId,
+  measurementId: firebaseConfigJson.measurementId || undefined,
 };
 
 // Initialize Firebase App instance safely
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+// Initialize Analytics safely in supported environments (browser only)
+export let analytics: Analytics | null = null;
+if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  }).catch(() => {});
+}
 
 // Initialize Auth
 export const auth = getAuth(app);
@@ -75,24 +87,87 @@ export function getOrCreateDeviceId(): string {
   return deviceId;
 }
 
+export interface FirebaseAuthResult {
+  user: FirebaseUser | null;
+  error: string | null;
+  errorCode?: string;
+  domain?: string;
+  actionType?: 'add_authorized_domain' | 'enable_google_provider' | 'popup_blocked' | 'user_closed' | 'generic';
+}
+
+export function getFirebaseConsoleLinks() {
+  const projectId = firebaseConfigJson.projectId || 'vet-123';
+  return {
+    projectId,
+    settingsUrl: `https://console.firebase.google.com/project/${projectId}/authentication/settings`,
+    providersUrl: `https://console.firebase.google.com/project/${projectId}/authentication/providers`,
+  };
+}
+
 /**
- * Sign in with Google Popup (with fallback to redirect if popup blocked)
+ * Sign in with Google Popup
  */
-export async function signInWithGooglePopup(): Promise<{ user: FirebaseUser | null; error: string | null }> {
+export async function signInWithGooglePopup(): Promise<FirebaseAuthResult> {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return { user: result.user, error: null };
   } catch (err: any) {
-    console.warn('Popup signin error, attempting redirect fallback if necessary:', err);
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-      try {
-        await signInWithRedirect(auth, googleProvider);
-        return { user: null, error: null };
-      } catch (redirectErr: any) {
-        return { user: null, error: redirectErr.message || 'Google sign-in redirect failed' };
-      }
+    console.warn('Google sign-in error:', err);
+    const code = err.code || '';
+    const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '';
+
+    if (code === 'auth/unauthorized-domain') {
+      return {
+        user: null,
+        error: `This domain (${currentDomain}) is not authorized in Firebase project "${firebaseConfigJson.projectId}".`,
+        errorCode: code,
+        domain: currentDomain,
+        actionType: 'add_authorized_domain',
+      };
     }
-    return { user: null, error: err.message || 'Failed to sign in with Google' };
+
+    if (code === 'auth/operation-not-allowed') {
+      return {
+        user: null,
+        error: `Google Sign-In is not enabled for Firebase project "${firebaseConfigJson.projectId}".`,
+        errorCode: code,
+        actionType: 'enable_google_provider',
+      };
+    }
+
+    if (code === 'auth/popup-blocked') {
+      return {
+        user: null,
+        error: 'The Google sign-in popup was blocked by your browser or iframe.',
+        errorCode: code,
+        actionType: 'popup_blocked',
+      };
+    }
+
+    if (code === 'auth/popup-closed-by-user') {
+      return {
+        user: null,
+        error: 'The Google sign-in window was closed before completing.',
+        errorCode: code,
+        actionType: 'user_closed',
+      };
+    }
+
+    if (code === 'auth/cancelled-popup-request') {
+      return {
+        user: null,
+        error: 'Sign-in popup request was cancelled. Please try again.',
+        errorCode: code,
+        actionType: 'generic',
+      };
+    }
+
+    return {
+      user: null,
+      error: err.message || 'Failed to sign in with Google',
+      errorCode: code,
+      actionType: 'generic',
+    };
   }
 }
 

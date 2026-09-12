@@ -6,7 +6,6 @@ import {
   Clock,
   Check,
   X,
-  Printer,
   ChevronRight,
   BookOpen,
 } from 'lucide-react';

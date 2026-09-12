@@ -34,6 +34,7 @@ interface HeaderProps {
   onOpenEPashuhaat?: () => void;
   onOpenVaccination?: () => void;
   onOpenExhibitionPlaybook?: () => void;
+  hasActiveDiagnosis?: boolean;
 }
 
 export function Header({
@@ -53,6 +54,7 @@ export function Header({
   onOpenEPashuhaat,
   onOpenVaccination,
   onOpenExhibitionPlaybook,
+  hasActiveDiagnosis = false,
 }: HeaderProps) {
   const t = UI_STRINGS[currentLang];
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -171,17 +173,19 @@ export function Header({
               </button>
             )}
 
-            {/* 1962 Emergency Call Helpline Button */}
-            <button
-              type="button"
-              onClick={onOpenHelpline}
-              className="flex items-center space-x-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full bg-red-950/80 hover:bg-red-900/90 border border-red-500/60 text-red-200 text-[10px] sm:text-xs font-bold transition shadow-[0_0_12px_rgba(239,68,68,0.3)] active:scale-95 cursor-pointer shrink-0"
-              title="24x7 National Veterinary Helpline: 1962"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
-              <PhoneCall className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400 shrink-0" />
-              <span className="font-mono tracking-wider text-red-100 font-extrabold text-[11px] sm:text-xs">1962</span>
-            </button>
+            {/* 1962 Emergency Call Helpline Button (Hidden when diagnosis result is active) */}
+            {!hasActiveDiagnosis && (
+              <button
+                type="button"
+                onClick={onOpenHelpline}
+                className="flex items-center space-x-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full bg-red-950/80 hover:bg-red-900/90 border border-red-500/60 text-red-200 text-[10px] sm:text-xs font-bold transition shadow-[0_0_12px_rgba(239,68,68,0.3)] active:scale-95 cursor-pointer shrink-0"
+                title="24x7 National Veterinary Helpline: 1962"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                <PhoneCall className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-400 shrink-0" />
+                <span className="font-mono tracking-wider text-red-100 font-extrabold text-[11px] sm:text-xs">1962</span>
+              </button>
+            )}
 
             {/* History Button */}
             <button

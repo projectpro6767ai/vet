@@ -39,7 +39,6 @@ import { RemedyCalculatorModal } from './components/RemedyCalculatorModal';
 import { PdfExportModal } from './components/PdfExportModal';
 import { VisualBodyMapModal } from './components/VisualBodyMapModal';
 import { FodderMoldScannerModal } from './components/FodderMoldScannerModal';
-import { IvrRelayModal } from './components/IvrRelayModal';
 import { ChemistFinderModal } from './components/ChemistFinderModal';
 import { EPashuhaatModal } from './components/EPashuhaatModal';
 import { VaccinationTrackerModal } from './components/VaccinationTrackerModal';
@@ -93,7 +92,6 @@ export default function App() {
   const [isPdfOpen, setIsPdfOpen] = useState<boolean>(false);
   const [isBodyMapOpen, setIsBodyMapOpen] = useState<boolean>(false);
   const [isFodderOpen, setIsFodderOpen] = useState<boolean>(false);
-  const [isIvrOpen, setIsIvrOpen] = useState<boolean>(false);
   const [isChemistOpen, setIsChemistOpen] = useState<boolean>(false);
   const [isEPashuhaatOpen, setIsEPashuhaatOpen] = useState<boolean>(false);
   const [isVaccinationOpen, setIsVaccinationOpen] = useState<boolean>(false);
@@ -553,6 +551,7 @@ export default function App() {
         onOpenEPashuhaat={() => setIsEPashuhaatOpen(true)}
         onOpenVaccination={() => setIsVaccinationOpen(true)}
         onOpenExhibitionPlaybook={() => setIsExhibitionPlaybookOpen(true)}
+        hasActiveDiagnosis={diagnosis !== null}
       />
 
       {/* 2. Emergency 1962 Helpline Banner */}
@@ -597,7 +596,6 @@ export default function App() {
                 onReset={handleResetForm}
                 onOpenPdfReport={() => setIsPdfOpen(true)}
                 onOpenRemedyCalculator={() => setIsRemedyOpen(true)}
-                onOpenIvrRelay={() => setIsIvrOpen(true)}
                 onOpenChemist={() => setIsChemistOpen(true)}
                 onOpenEPashuhaat={() => setIsEPashuhaatOpen(true)}
                 onOpenVaccination={() => setIsVaccinationOpen(true)}
@@ -787,14 +785,6 @@ export default function App() {
           const note = `[Fodder AI Scan: ${report.sampleType} - Safety Score: ${report.safetyScore}/100, Aflatoxin Risk: ${report.aflatoxinRiskLevel}, Mold: ${report.moldDetected ? 'Detected' : 'Negative'}, Est. ${report.estimatedPpb} ppb]`;
           setSymptomsText((prev) => (prev ? `${prev}\n${note}` : note));
         }}
-      />
-
-      {/* 9. Offline Feature Phone IVR / Missed Call Audio Relay Modal */}
-      <IvrRelayModal
-        isOpen={isIvrOpen}
-        onClose={() => setIsIvrOpen(false)}
-        diagnosis={diagnosis}
-        currentLang={currentLang}
       />
 
       {/* 10. Taluka Chemist & Herbal Store Directory Modal */}

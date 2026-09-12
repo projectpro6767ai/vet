@@ -9,7 +9,6 @@ import {
   ShoppingBag,
   Copy,
   Check,
-  Printer,
   Download,
   ChevronDown,
   ChevronUp,
@@ -32,7 +31,6 @@ interface DiagnosisResultProps {
   onReset: () => void;
   onOpenPdfReport?: () => void;
   onOpenRemedyCalculator?: () => void;
-  onOpenIvrRelay?: () => void;
   onOpenChemist?: () => void;
   onOpenEPashuhaat?: () => void;
   onOpenVaccination?: () => void;
@@ -45,7 +43,6 @@ export function DiagnosisResult({
   onReset,
   onOpenPdfReport,
   onOpenRemedyCalculator,
-  onOpenIvrRelay,
   onOpenChemist,
   onOpenEPashuhaat,
   onOpenVaccination,
@@ -118,11 +115,6 @@ export function DiagnosisResult({
     setTimeout(() => setCopiedJson(false), 2000);
   };
 
-  // Dedicated Print action
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Dedicated Save as PDF action
   const handleSavePdf = () => {
     downloadClinicalReportPdf(diagnosis, {
@@ -180,7 +172,7 @@ export function DiagnosisResult({
             </div>
           </div>
 
-          {/* Quick Actions (Call 1962 if Red, Print, Save as PDF, QR Docket, New Analysis) */}
+          {/* Quick Actions (Call 1962 if Red, Save as PDF, QR Docket, New Analysis) */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             {diagnosis.is_emergency_dispatch_needed && (
               <>
@@ -224,16 +216,6 @@ export function DiagnosisResult({
                   <span>{t.savePdf || 'Save as PDF'}</span>
                 </>
               )}
-            </button>
-
-            {/* 2. Working Print Button */}
-            <button
-              onClick={handlePrint}
-              className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-100 font-bold text-xs flex items-center space-x-1.5 border border-white/10 transition cursor-pointer active:scale-95"
-              title="Open browser print preview"
-            >
-              <Printer className="w-4 h-4 text-emerald-400" />
-              <span>{t.print || 'Print'}</span>
             </button>
 
             {/* 3. Official Doctor QR Docket Modal */}
@@ -290,20 +272,6 @@ export function DiagnosisResult({
             </h3>
 
             <div className="flex items-center space-x-2">
-              {onOpenIvrRelay && (
-                <button
-                  type="button"
-                  onClick={onOpenIvrRelay}
-                  className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
-                  title="Deliver audio report to basic keypad phone"
-                >
-                  <PhoneCall className="w-3.5 h-3.5 text-amber-400" />
-                  <span>
-                    {t.keypadIvrRelay || 'Keypad Phone IVR Relay'}
-                  </span>
-                </button>
-              )}
-
               <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full hidden sm:inline">
                 {activeVoiceLang === 'mr'
                   ? 'मराठीत वाचन सुरू आहे...'
@@ -535,7 +503,7 @@ export function DiagnosisResult({
           )}
         </div>
 
-        {/* 6. Action Footer: Save PDF, Print, Doctor QR Docket, Remedy, Pashuhaat, Vaccine (NO 1962 Track) */}
+        {/* 6. Action Footer: Save PDF, Doctor QR Docket, Remedy, Pashuhaat, Vaccine (NO 1962 Track) */}
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-2.5">
             {/* Save as PDF Button */}
@@ -555,16 +523,6 @@ export function DiagnosisResult({
                   <span>{t.savePdf || 'Save as PDF'}</span>
                 </>
               )}
-            </button>
-
-            {/* Print Button */}
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-100 hover:text-white border border-white/10 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap active:scale-95"
-              title="Print Clinical Docket"
-            >
-              <Printer className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{t.print || 'Print'}</span>
             </button>
 
             {/* Doctor QR Docket */}
