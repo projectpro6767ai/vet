@@ -33,7 +33,11 @@ export function sanitizeForSpeech(text: string, lang: 'hi' | 'mr' | 'en'): strin
       .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 पैकी $2')
       .replace(/\bRED\b/gi, 'अति तातडीचा लाल')
       .replace(/\bYELLOW\b/gi, 'मध्यम पिवळा')
-      .replace(/\bGREEN\b/gi, 'सामान्य हिरवा');
+      .replace(/\bGREEN\b/gi, 'सामान्य हिरवा')
+      .replace(/(\d+)\s*kg\b/gi, '$1 किलो')
+      .replace(/(\d+)\s*ml\b/gi, '$1 मिली')
+      .replace(/(\d+)\s*g\b/gi, '$1 ग्रॅम')
+      .replace(/\bppb\b/gi, 'पार्ट्स पर बिलियन');
   } else if (lang === 'hi') {
     res = res
       .replace(/\bLSD\b/gi, 'लंपी स्किन बीमारी')
@@ -46,7 +50,11 @@ export function sanitizeForSpeech(text: string, lang: 'hi' | 'mr' | 'en'): strin
       .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 में से $2')
       .replace(/\bRED\b/gi, 'अति गंभीर लाल')
       .replace(/\bYELLOW\b/gi, 'मध्यम पीला')
-      .replace(/\bGREEN\b/gi, 'सामान्य हरा');
+      .replace(/\bGREEN\b/gi, 'सामान्य हरा')
+      .replace(/(\d+)\s*kg\b/gi, '$1 किलो')
+      .replace(/(\d+)\s*ml\b/gi, '$1 मिली')
+      .replace(/(\d+)\s*g\b/gi, '$1 ग्राम')
+      .replace(/\bppb\b/gi, 'पार्ट्स पर बिलियन');
   } else {
     // English
     res = res
@@ -59,7 +67,10 @@ export function sanitizeForSpeech(text: string, lang: 'hi' | 'mr' | 'en'): strin
       .replace(/\b1962\b/g, 'nineteen sixty-two')
       .replace(/\bRED\b/gi, 'Emergency Red')
       .replace(/\bYELLOW\b/gi, 'Moderate Yellow')
-      .replace(/\bGREEN\b/gi, 'Mild Green');
+      .replace(/\bGREEN\b/gi, 'Mild Green')
+      .replace(/(\d+)\s*kg\b/gi, '$1 kilograms')
+      .replace(/(\d+)\s*ml\b/gi, '$1 milliliters')
+      .replace(/(\d+)\s*g\b/gi, '$1 grams');
   }
 
   return res.replace(/\s+/g, ' ').trim();
@@ -171,54 +182,7 @@ export class SpeechVoiceManager {
       this.onQueueStart();
     }
 
-    // Attempt 1: Fetch synthesized MP3 via POST /api/tts for highest voice fidelity
-    try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          lang,
-          text: cleaned,
-        }),
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        if (blob.size > 500) {
-          const blobUrl = URL.createObjectURL(blob);
-          this.currentAudioBlobUrl = blobUrl;
-          const audio = new Audio(blobUrl);
-          this.currentAudio = audio;
-
-          audio.onended = () => {
-            this.cleanupAudio();
-            this.isCurrentlySpeaking = false;
-            this.activeLang = null;
-            if (this.onQueueEnd) {
-              const cb = this.onQueueEnd;
-              this.onQueueEnd = undefined;
-              cb();
-            }
-          };
-
-          audio.onerror = (e) => {
-            console.warn('Audio playback error, falling back to Web Speech synthesis:', e);
-            this.cleanupAudio();
-            this.fallbackWebSpeech(cleaned, lang);
-          };
-
-          await audio.play();
-          return true;
-        }
-      }
-    } catch (err) {
-      console.warn('Primary TTS fetch encountered error, using Web Speech fallback:', err);
-      this.cleanupAudio();
-    }
-
-    // Attempt 2: High-accuracy browser Web Speech API fallback
+    // Instant browser Web Speech API for lightning-fast voice response (<10ms)
     return this.fallbackWebSpeech(cleaned, lang);
   }
 

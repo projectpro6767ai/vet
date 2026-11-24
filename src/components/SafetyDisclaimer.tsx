@@ -8,8 +8,6 @@ interface SafetyDisclaimerProps {
 
 export function SafetyDisclaimer({ currentLang }: SafetyDisclaimerProps) {
   const t = UI_STRINGS[currentLang];
-  const isHindi = currentLang === 'hi';
-  const isMarathi = currentLang === 'mr';
 
   return (
     <footer className="mt-8 pt-6 pb-12 border-t border-white/10 text-slate-400 text-xs space-y-4">
@@ -19,11 +17,7 @@ export function SafetyDisclaimer({ currentLang }: SafetyDisclaimerProps) {
         </div>
         <div className="space-y-1">
           <div className="font-bold text-amber-300 font-mono tracking-wide uppercase text-xs">
-            {isHindi
-              ? 'सख्त चिकित्सा सुरक्षा नियम (Medical Safety Protocols)'
-              : isMarathi
-              ? 'वैद्यकीय सुरक्षा नियमावली'
-              : 'Strict Veterinary Safety & Medical Protocol'}
+            {t.safetyProtocolTitle}
           </div>
           <p className="text-slate-300 leading-relaxed text-xs">
             {t.disclaimer}
@@ -36,12 +30,12 @@ export function SafetyDisclaimer({ currentLang }: SafetyDisclaimerProps) {
           <span>SYS_ID: VM-AI-8832 | VERSION: 4.2.0-STABLE</span>
         </div>
         <div className="text-emerald-400 font-semibold">
-          <span>Created by <strong className="text-white">Rajvardhan Vitthal Suryavanshi</strong></span>
+          <span>{currentLang === 'hi' ? 'निर्माता:' : currentLang === 'mr' ? 'निर्माता:' : 'Created by'} <strong className="text-white">Rajvardhan Vitthal Suryavanshi</strong></span>
         </div>
         <div className="flex items-center space-x-3">
-          <span>EMERGENCY: 1962</span>
+          <span>{t.footerEmergency}</span>
           <span>•</span>
-          <span>FIELD TRIAGE READY</span>
+          <span>{t.footerTriageReady}</span>
         </div>
       </div>
     </footer>

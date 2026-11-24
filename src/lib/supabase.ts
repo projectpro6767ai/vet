@@ -258,3 +258,25 @@ export async function fetchTriageRecordsFromSupabase(): Promise<{ data: TriageRe
     return { data: null, error: err.message };
   }
 }
+
+export async function deleteTriageRecordFromSupabase(recordId: string): Promise<void> {
+  try {
+    await supabase.from('triage_records').delete().eq('id', recordId);
+  } catch (err) {
+    console.warn('Supabase delete notice:', err);
+  }
+}
+
+export function getOrCreateDeviceId(): string {
+  try {
+    const key = 'vet_mitra_device_id';
+    let deviceId = localStorage.getItem(key);
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      localStorage.setItem(key, deviceId);
+    }
+    return deviceId;
+  } catch {
+    return 'device_local_guest';
+  }
+}

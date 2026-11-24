@@ -12,7 +12,7 @@ export interface VetDiagnosisResponse {
   local_voice_script_english: string;
   local_voice_script_hindi: string;
   local_voice_script_marathi: string;
-  source?: 'gemini_ai' | 'clinical_rule_engine' | 'offline_edge';
+  source?: 'ai_router_groq' | 'gemini_ai' | 'clinical_rule_engine' | 'offline_edge';
   model_used?: string;
   diagnostic_note?: string;
 }
@@ -51,7 +51,11 @@ export interface PresetSymptomCase {
     hi: string;
     mr: string;
   };
-  animalType: string;
+  animalType: {
+    en: string;
+    hi: string;
+    mr: string;
+  };
   description: {
     en: string;
     hi: string;
@@ -109,14 +113,19 @@ export interface OutbreakHotspot {
 export interface RemedyIngredient {
   name: string;
   nameMarathi: string;
+  nameMr?: string;
+  nameHi?: string;
   ratioPer100kg: number; // in grams or ml
   unit: string;
   purpose: string;
+  purposeMr?: string;
+  purposeHi?: string;
 }
 
 export interface AyurvedicRemedyRecipe {
   id: string;
   conditionName: string;
+  conditionNameHindi?: string;
   conditionMarathi: string;
   source: string; // e.g. "NDDB / TANUVAS Peer-Reviewed Protocol"
   ingredients: RemedyIngredient[];
@@ -127,8 +136,14 @@ export interface AyurvedicRemedyRecipe {
   };
   cropWasteFeedSupplement: {
     title: string;
+    titleHi?: string;
+    titleMr?: string;
     ratioBreakdown: string;
+    ratioBreakdownHi?: string;
+    ratioBreakdownMr?: string;
     tips: string;
+    tipsHi?: string;
+    tipsMr?: string;
   };
 }
 
@@ -204,12 +219,21 @@ export interface EPashuhaatService {
   id: string;
   category: 'AI_TECHNICIAN' | 'INSURANCE' | 'BREEDING_BULL' | 'SUBSIDY';
   title: string;
+  titleHi: string;
   titleMarathi: string;
   provider: string;
+  providerHi: string;
+  providerMarathi: string;
   contactNumber: string;
   location: string;
+  locationHi: string;
+  locationMarathi: string;
   badge: string;
+  badgeHi: string;
+  badgeMarathi: string;
   details: string[];
+  detailsHi: string[];
+  detailsMarathi: string[];
   officialPortalUrl: string;
 }
 
@@ -217,14 +241,70 @@ export interface EPashuhaatService {
 export interface VaccinationDriveItem {
   id: string;
   diseaseName: string;
+  diseaseHi: string;
   diseaseMarathi: string;
   vaccineName: string;
+  vaccineNameHi: string;
+  vaccineNameMarathi: string;
   targetAnimals: string;
+  targetAnimalsHi: string;
+  targetAnimalsMarathi: string;
   upcomingDate: string;
+  upcomingDateHi: string;
+  upcomingDateMarathi: string;
   daysRemaining: number;
   talukaCampLocation: string;
+  talukaCampLocationHi: string;
+  talukaCampLocationMarathi: string;
   isGovernmentFree: boolean;
   frequency: string;
+  frequencyHi: string;
+  frequencyMarathi: string;
   precautions: string;
+  precautionsHi: string;
+  precautionsMarathi: string;
+}
+
+// 8. India 349 State Talukas Sync Registry
+export interface IndiaTaluka {
+  id: string;
+  taluka: string;
+  district: string;
+  state: string;
+  stateCode: string;
+  region: 'West' | 'North' | 'South' | 'East' | 'Central' | 'Northeast';
+  mvu1962Active: boolean;
+  vetPolyclinic: string;
+  helpline: string;
+  livestockFocus: string;
+  alertLevel: 'SAFE' | 'ADVISORY' | 'ALERT';
+  healthAlert: string;
+  healthAlertHi: string;
+  healthAlertMr: string;
+  lat: number;
+  lng: number;
+  synced: boolean;
+  lastSyncedAt: string;
+}
+
+export interface StateTalukaSummary {
+  state: string;
+  stateCode: string;
+  region: IndiaTaluka['region'];
+  talukaCount: number;
+  mvuActiveCount: number;
+  synced: boolean;
+}
+
+export interface TalukaSyncResponse {
+  success: boolean;
+  syncedCount: number;
+  statesCount: number;
+  syncedAt: string;
+  source: 'national_lgd_registry' | 'data_gov_in_live';
+  dataGovConfigured: boolean;
+  mapsKeyConfigured: boolean;
+  stateSummaries: StateTalukaSummary[];
+  message: string;
 }
 

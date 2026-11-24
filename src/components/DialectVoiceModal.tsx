@@ -7,16 +7,18 @@ import {
   X,
   Sparkles,
   Radio,
-  CornerDownLeft,
   ChevronRight,
   MessageCircle,
 } from 'lucide-react';
 import { DIALECT_PROFILES } from '../data/dialectData';
 import { SpeechVoiceManager } from '../utils/audio';
+import { SupportedLanguage } from '../types';
+import { UI_STRINGS } from '../data/translations';
 
 interface DialectVoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentLang: SupportedLanguage;
   onDispatchVoiceCommand?: (command: string, animal?: string) => void;
   onOpenMvu?: () => void;
   onOpenCalculator?: () => void;
@@ -26,11 +28,13 @@ interface DialectVoiceModalProps {
 export function DialectVoiceModal({
   isOpen,
   onClose,
+  currentLang,
   onDispatchVoiceCommand,
   onOpenMvu,
   onOpenCalculator,
   onOpenOutbreak,
 }: DialectVoiceModalProps) {
+  const t = UI_STRINGS[currentLang];
   const [selectedDialectKey, setSelectedDialectKey] = useState<string>('varhadi');
   const [isListening, setIsListening] = useState(false);
   const [speechTranscript, setSpeechTranscript] = useState('');
@@ -92,10 +96,10 @@ export function DialectVoiceModal({
       reply = dialect.sampleResponses.remedy;
       if (onOpenCalculator) onOpenCalculator();
     } else if (lower.includes('आजार') || lower.includes('गाव') || lower.includes('नकाशा')) {
-      reply = 'तालुक्यातील आजारांचा हॉटस्पॉट नकाशा उघडत आहे. चिंचोली गावात लंपीचा प्रादुर्भाव आहे.';
+      reply = t.dialectFallbackUnderstanding;
       if (onOpenOutbreak) onOpenOutbreak();
     } else {
-      reply = `समजले: "${rawText}". मी आपल्या जनावरासाठी प्राथमिक तपासणी नोंदवली आहे.`;
+      reply = t.dialectFallbackGeneric.replace('{text}', rawText);
       if (onDispatchVoiceCommand) onDispatchVoiceCommand(rawText);
     }
 
@@ -103,7 +107,6 @@ export function DialectVoiceModal({
     handleSpeak(reply);
   };
 
-  // Toggle Live Microphone listening
   const handleToggleMic = () => {
     if (isListening) {
       setIsListening(false);
@@ -136,7 +139,6 @@ export function DialectVoiceModal({
         setIsListening(false);
       }
     } else {
-      // Simulated mic trigger for browsers without SpeechRecognition
       setIsListening(true);
       setTimeout(() => {
         setIsListening(false);
@@ -158,14 +160,14 @@ export function DialectVoiceModal({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
-                  Regional Voice Assistant
+                  {t.dialectVoiceTitle}
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-black uppercase">
-                  Dialect AI
+                  {t.dialectAiBadge}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Full Interactive Voice Navigation in Local Marathi Dialects
+                {t.dialectVoiceSub}
               </p>
             </div>
           </div>
@@ -180,7 +182,7 @@ export function DialectVoiceModal({
         {/* Dialect Selector Tabs */}
         <div>
           <label className="text-xs text-slate-400 font-bold block mb-2">
-            Select Language Profile:
+            {t.dialectSelectLabel}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {Object.values(DIALECT_PROFILES).map((p) => {
@@ -208,7 +210,7 @@ export function DialectVoiceModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-xs font-bold text-emerald-400">
               <Sparkles className="w-4 h-4" />
-              <span>{dialect.name} Engine Active</span>
+              <span>{dialect.name}{t.dialectEngineActive}</span>
             </div>
             <button
               onClick={() => handleSpeak(aiSpokenResponse)}
@@ -217,12 +219,12 @@ export function DialectVoiceModal({
               {isPlayingAudio ? (
                 <>
                   <VolumeX className="w-3.5 h-3.5 text-red-400" />
-                  <span>Stop</span>
+                  <span>{t.stop}</span>
                 </>
               ) : (
                 <>
                   <Volume2 className="w-3.5 h-3.5" />
-                  <span>Listen</span>
+                  <span>{t.listen}</span>
                 </>
               )}
             </button>
@@ -234,7 +236,7 @@ export function DialectVoiceModal({
 
           {speechTranscript && (
             <div className="text-xs text-slate-400 pl-2 border-l-2 border-emerald-500 flex items-center space-x-2">
-              <span className="font-mono text-emerald-400 font-bold">You said:</span>
+              <span className="font-mono text-emerald-400 font-bold">{t.dialectYouSaid}</span>
               <span>"{speechTranscript}"</span>
             </div>
           )}
@@ -253,7 +255,7 @@ export function DialectVoiceModal({
             {isListening ? <MicOff className="w-9 h-9" /> : <Mic className="w-9 h-9" />}
           </button>
           <div className="text-xs text-slate-300 font-bold">
-            {isListening ? 'Listening... speak now' : 'Tap Mic & Speak'}
+            {isListening ? t.dialectListening : t.dialectTapMic}
           </div>
         </div>
 
@@ -261,7 +263,7 @@ export function DialectVoiceModal({
         <div className="space-y-2">
           <div className="text-xs text-slate-400 font-bold flex items-center space-x-1.5">
             <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Sample Voice Commands:</span>
+            <span>{t.dialectSampleCommands}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {dialect.samplePhrases.map((phrase, idx) => (

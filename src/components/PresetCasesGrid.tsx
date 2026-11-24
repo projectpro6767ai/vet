@@ -24,11 +24,7 @@ export function PresetCasesGrid({
           <span>{t.testPresetsTitle}</span>
         </h3>
         <span className="text-xs font-mono text-slate-400">
-          {currentLang === 'hi'
-            ? '6 प्रमुख ग्रामीण रोग नमूने'
-            : currentLang === 'mr'
-            ? '६ प्रमुख आजार नमुने'
-            : '6 field case templates'}
+          {t.presetSubtitle}
         </span>
       </div>
 
@@ -45,7 +41,7 @@ export function PresetCasesGrid({
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                  {item.animalType}
+                  {item.animalType[currentLang]}
                 </span>
                 <span
                   className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full ${
@@ -70,11 +66,7 @@ export function PresetCasesGrid({
 
               <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs font-bold text-emerald-400">
                 <span>
-                  {currentLang === 'hi'
-                    ? 'सैंपल लोड करें'
-                    : currentLang === 'mr'
-                    ? 'नमुना तपासा'
-                    : 'Load Preset Case'}
+                  {t.loadPreset}
                 </span>
                 <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition text-emerald-400" />
               </div>

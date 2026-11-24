@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { SupportedLanguage, AnimalBodyHotspot } from '../types';
 import { ANIMAL_BODY_HOTSPOTS } from '../data/ecosystemData';
+import { UI_STRINGS } from '../data/translations';
 
 interface VisualBodyMapModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export function VisualBodyMapModal({
   const [selectedPartId, setSelectedPartId] = useState<string>('flank');
   const [activeAnimalType, setActiveAnimalType] = useState<string>('Cow');
   const [addedSymptoms, setAddedSymptoms] = useState<string[]>([]);
+  const t = UI_STRINGS[currentLang];
 
   if (!isOpen) return null;
 
@@ -69,22 +71,14 @@ export function VisualBodyMapModal({
             <div>
               <h3 className="font-extrabold text-lg text-white flex items-center space-x-2 font-['Outfit']">
                 <span>
-                  {currentLang === 'hi'
-                    ? 'इंटरैक्टिव पशु शरीर मानचित्र (टैप करें)'
-                    : currentLang === 'mr'
-                    ? 'सचित्र जनावराचा शरीर नकाशा (अवयव निवडा)'
-                    : 'Interactive Animal Visual Body Map'}
+                  {t.bodyMapTitle}
                 </span>
                 <span className="text-[10px] font-mono uppercase bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                  Rural No-Text UI
+                  {t.bodyMapNoText}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                {currentLang === 'hi'
-                  ? 'लिखने में परेशानी हो तो सीधे बीमार अंग (पैर, थन, पेट, मुंह) पर क्लिक करें'
-                  : currentLang === 'mr'
-                  ? 'लिहिता येत नसेल तर जनावराच्या दुखऱ्या भागावर (खूर, कास, पोट, तोंड) बोट टेकवा'
-                  : 'Tap affected anatomical areas to auto-generate vernacular symptoms without typing'}
+                {t.bodyMapDesc}
               </p>
             </div>
           </div>
@@ -99,26 +93,23 @@ export function VisualBodyMapModal({
         {/* Modal Body */}
         <div className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
           {/* Animal Species Selector Tabs */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-            {['Cow', 'Buffalo', 'Goat', 'Sheep'].map((sp) => (
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              { id: 'Cow', label: t.cowEmoji },
+              { id: 'Buffalo', label: t.buffaloEmoji },
+              { id: 'Goat', label: t.goatEmoji },
+              { id: 'Sheep', label: t.sheepEmoji }
+            ].map((sp) => (
               <button
-                key={sp}
-                onClick={() => setActiveAnimalType(sp)}
+                key={sp.id}
+                onClick={() => setActiveAnimalType(sp.id)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
-                  activeAnimalType === sp
+                  activeAnimalType === sp.id
                     ? 'bg-emerald-600 text-black shadow-md'
                     : 'bg-black/40 text-slate-300 hover:text-white border border-white/10'
                 }`}
               >
-                <span>
-                  {sp === 'Cow'
-                    ? '🐄 गाय (Cow)'
-                    : sp === 'Buffalo'
-                    ? '🐃 म्हैस (Buffalo)'
-                    : sp === 'Goat'
-                    ? '🐐 शेळी (Goat)'
-                    : '🐑 मेंढी (Sheep)'}
-                </span>
+                <span>{sp.label}</span>
               </button>
             ))}
           </div>
@@ -167,6 +158,7 @@ export function VisualBodyMapModal({
             {/* Interactive Pins placed dynamically on animal body */}
             {ANIMAL_BODY_HOTSPOTS.map((hotspot) => {
               const isSelected = hotspot.id === selectedPartId;
+              const name = currentLang === 'mr' ? hotspot.nameMr : currentLang === 'hi' ? hotspot.nameHi : hotspot.nameEn;
               return (
                 <button
                   key={hotspot.id}
@@ -180,7 +172,7 @@ export function VisualBodyMapModal({
                     left: `${hotspot.coords.x}%`,
                     top: `${hotspot.coords.y}%`,
                   }}
-                  title={currentLang === 'mr' ? hotspot.nameMr : hotspot.nameEn}
+                  title={name}
                 >
                   <span className="relative flex h-3 w-3">
                     <span
@@ -203,9 +195,7 @@ export function VisualBodyMapModal({
                         : 'bg-black/90 text-slate-200 border border-white/20'
                     }`}
                   >
-                    {currentLang === 'mr'
-                      ? hotspot.nameMr.split(' ')[0]
-                      : hotspot.nameEn}
+                    {name.split(' ')[0]}
                   </span>
                 </button>
               );
@@ -229,7 +219,7 @@ export function VisualBodyMapModal({
                         : activeHotspot.nameEn}
                     </h4>
                     <span className="text-[11px] text-emerald-400 font-mono">
-                      Tap symptoms below to add to diagnosis
+                      {t.tapSymptoms}
                     </span>
                   </div>
                 </div>
@@ -237,7 +227,7 @@ export function VisualBodyMapModal({
                 <button
                   onClick={() =>
                     playVernacularAudio(
-                      currentLang === 'mr' ? activeHotspot.nameMr : activeHotspot.nameEn
+                      currentLang === 'mr' ? activeHotspot.nameMr : currentLang === 'hi' ? activeHotspot.nameHi : activeHotspot.nameEn
                     )
                   }
                   className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-emerald-300 text-xs transition"
@@ -251,6 +241,7 @@ export function VisualBodyMapModal({
               <div className="space-y-2 pt-1">
                 {activeHotspot.symptoms.map((sym, idx) => {
                   const isAdded = addedSymptoms.includes(sym.symptomQuery);
+                  const label = currentLang === 'mr' ? sym.labelMr : currentLang === 'hi' ? sym.labelHi : sym.labelEn;
                   return (
                     <div
                       key={idx}
@@ -270,11 +261,7 @@ export function VisualBodyMapModal({
                             {sym.urgencyTag}
                           </span>
                           <span className="text-xs font-bold text-white">
-                            {currentLang === 'mr'
-                              ? sym.labelMr
-                              : currentLang === 'hi'
-                              ? sym.labelHi
-                              : sym.labelEn}
+                            {label}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-400 italic">
@@ -285,12 +272,10 @@ export function VisualBodyMapModal({
                       <div className="flex items-center space-x-2 shrink-0">
                         <button
                           onClick={() =>
-                            playVernacularAudio(
-                              currentLang === 'mr' ? sym.labelMr : sym.labelEn
-                            )
+                            playVernacularAudio(label)
                           }
                           className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition"
-                          title="Listen in Marathi/Hindi"
+                          title="Listen"
                         >
                           <Volume2 className="w-3.5 h-3.5" />
                         </button>
@@ -306,12 +291,12 @@ export function VisualBodyMapModal({
                           {isAdded ? (
                             <>
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Added</span>
+                              <span>{t.added}</span>
                             </>
                           ) : (
                             <>
                               <Plus className="w-3.5 h-3.5" />
-                              <span>Select</span>
+                              <span>{t.select}</span>
                             </>
                           )}
                         </button>
@@ -328,14 +313,14 @@ export function VisualBodyMapModal({
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/10 bg-black/50">
           <span className="text-[11px] text-slate-400">
             {addedSymptoms.length > 0
-              ? `${addedSymptoms.length} anatomical symptoms selected`
-              : 'Tap body hotspot pins to inspect'}
+              ? `${addedSymptoms.length}${t.symptomsSelected}`
+              : t.tapHotspots}
           </span>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-xs transition cursor-pointer shadow-md"
           >
-            Apply to Triage Form
+            {t.applyToForm}
           </button>
         </div>
       </div>

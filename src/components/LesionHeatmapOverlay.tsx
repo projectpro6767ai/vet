@@ -11,6 +11,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { LesionBoundingBox, SupportedLanguage } from '../types';
+import { UI_STRINGS } from '../data/translations';
 
 interface LesionHeatmapOverlayProps {
   imageSrc: string;
@@ -25,6 +26,7 @@ export function LesionHeatmapOverlay({
   currentLang,
   onSelectLesion,
 }: LesionHeatmapOverlayProps) {
+  const t = UI_STRINGS[currentLang];
   const [viewMode, setViewMode] = useState<'both' | 'heatmap' | 'boxes' | 'raw'>('both');
   const [activeLesionId, setActiveLesionId] = useState<string | null>(lesions[0]?.id || null);
 
@@ -61,7 +63,7 @@ export function LesionHeatmapOverlay({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            All
+            {t.all || 'All'}
           </button>
           <button
             onClick={() => setViewMode('heatmap')}
@@ -72,7 +74,7 @@ export function LesionHeatmapOverlay({
             }`}
           >
             <Flame className="w-3 h-3 text-orange-200" />
-            <span>Heatmap</span>
+            <span>{t.heatmap}</span>
           </button>
           <button
             onClick={() => setViewMode('boxes')}
@@ -83,7 +85,7 @@ export function LesionHeatmapOverlay({
             }`}
           >
             <Layers className="w-3 h-3 text-blue-200" />
-            <span>Boxes</span>
+            <span>{t.boxes}</span>
           </button>
           <button
             onClick={() => setViewMode('raw')}
@@ -93,7 +95,7 @@ export function LesionHeatmapOverlay({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Raw
+            {t.standardLabel || 'Raw'}
           </button>
         </div>
       </div>
@@ -198,7 +200,7 @@ export function LesionHeatmapOverlay({
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>Inference: MobileNetV3-SSD • 512x512 Res</span>
           <span className="text-emerald-400 font-bold">
-            {lesions.length} Lesions Isolated
+            {lesions.length} {t.boxes} Isolated
           </span>
         </div>
       </div>
@@ -240,12 +242,12 @@ export function LesionHeatmapOverlay({
               {viewMode === 'raw' ? (
                 <>
                   <Eye className="w-3 h-3 text-emerald-400" />
-                  <span>Show AI</span>
+                  <span>{t.showAi}</span>
                 </>
               ) : (
                 <>
                   <EyeOff className="w-3 h-3 text-slate-400" />
-                  <span>Hide AI</span>
+                  <span>{t.hideAi}</span>
                 </>
               )}
             </button>

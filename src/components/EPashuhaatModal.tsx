@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SupportedLanguage, EPashuhaatService } from '../types';
 import { E_PASHUHAAT_SERVICES } from '../data/ecosystemData';
+import { UI_STRINGS } from '../data/translations';
 
 interface EPashuhaatModalProps {
   isOpen: boolean;
@@ -27,15 +28,16 @@ export function EPashuhaatModal({
   currentLang,
 }: EPashuhaatModalProps) {
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
+  const t = UI_STRINGS[currentLang];
 
   if (!isOpen) return null;
 
   const categories = [
-    { key: 'ALL', label: 'All Services' },
-    { key: 'AI_TECHNICIAN', label: 'AI Technicians' },
-    { key: 'INSURANCE', label: 'Livestock Insurance' },
-    { key: 'BREEDING_BULL', label: 'Breeding Bulls' },
-    { key: 'SUBSIDY', label: 'Subsidies & Loans' },
+    { key: 'ALL', label: t.allServices },
+    { key: 'AI_TECHNICIAN', label: t.aiTechnicians },
+    { key: 'INSURANCE', label: t.livestockInsurance },
+    { key: 'BREEDING_BULL', label: t.breedingBulls },
+    { key: 'SUBSIDY', label: t.subsidiesLoans },
   ];
 
   const filteredServices = E_PASHUHAAT_SERVICES.filter(
@@ -54,14 +56,14 @@ export function EPashuhaatModal({
             <div>
               <h3 className="font-extrabold text-lg text-white flex items-center space-x-2 font-['Outfit']">
                 <span>
-                  E-Pashuhaat & Livestock Insurance Integration
+                  {t.epashuhaatTitle}
                 </span>
                 <span className="text-[10px] font-mono uppercase bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
                   DAHD / NDDB
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Connect to verified doorstep AI technicians, 70% subsidized insurance & pedigree bulls
+                {t.epashuhaatSub}
               </p>
             </div>
           </div>
@@ -74,7 +76,7 @@ export function EPashuhaatModal({
         </div>
 
         {/* Category Tabs */}
-        <div className="px-5 pt-3 pb-2 flex items-center space-x-2 overflow-x-auto border-b border-white/10 text-xs">
+        <div className="px-5 pt-3 pb-2 flex items-center space-x-2 overflow-x-auto border-b border-white/10 text-xs no-scrollbar">
           {categories.map((c) => (
             <button
               key={c.key}
@@ -101,17 +103,17 @@ export function EPashuhaatModal({
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-950 text-emerald-300 border border-emerald-500/40">
-                      {service.badge}
+                      {currentLang === 'mr' ? service.badgeMarathi : currentLang === 'hi' ? service.badgeHi : service.badge}
                     </span>
                     <span className="text-xs text-slate-400">
-                      {service.location}
+                      {currentLang === 'mr' ? service.locationMarathi : currentLang === 'hi' ? service.locationHi : service.location}
                     </span>
                   </div>
                   <h4 className="text-sm font-extrabold text-white mt-1">
-                    {service.title}
+                    {currentLang === 'mr' ? service.titleMarathi : currentLang === 'hi' ? service.titleHi : service.title}
                   </h4>
                   <p className="text-xs text-emerald-400 font-medium">
-                    {service.provider}
+                    {currentLang === 'mr' ? service.providerMarathi : currentLang === 'hi' ? service.providerHi : service.provider}
                   </p>
                 </div>
 
@@ -121,7 +123,7 @@ export function EPashuhaatModal({
                     className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-xs transition cursor-pointer shadow-md"
                   >
                     <PhoneCall className="w-3.5 h-3.5" />
-                    <span>Call Helpline</span>
+                    <span>{t.callHelpline}</span>
                   </a>
 
                   <a
@@ -138,7 +140,7 @@ export function EPashuhaatModal({
 
               {/* Service Highlights List */}
               <div className="pt-2 border-t border-white/10 space-y-1.5">
-                {service.details.map((detail, idx) => (
+                {(currentLang === 'mr' ? service.detailsMarathi : currentLang === 'hi' ? service.detailsHi : service.details).map((detail, idx) => (
                   <div key={idx} className="flex items-start space-x-2 text-xs text-slate-300">
                     <span className="text-emerald-400 font-bold">•</span>
                     <span>{detail}</span>
@@ -152,13 +154,13 @@ export function EPashuhaatModal({
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/10 bg-black/50">
           <span className="text-[11px] text-slate-400">
-            Official integration with Department of Animal Husbandry & Dairying (DAHD)
+            {t.officialIntegration}
           </span>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition cursor-pointer"
           >
-            Close
+            {t.close}
           </button>
         </div>
       </div>

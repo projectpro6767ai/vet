@@ -146,10 +146,22 @@ export function SymptomInput({
   const startVoiceRecording = async () => {
     setMicError(null);
     const initialText = symptomsText; // Capture current text at start
+
+    if (!navigator?.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setMicError(
+        currentLang === 'hi'
+          ? 'इस ब्राउज़र में माइक्रोफ़ोन रिकॉर्डिंग समर्थित नहीं है। कृपया लक्षण टाइप करें।'
+          : currentLang === 'mr'
+          ? 'या ब्राउझरमध्ये माइक रेकॉर्डिंग समर्थित नाही. कृपया लक्षणे टाइप करा.'
+          : 'Microphone recording is not supported in this browser. Please type your symptoms below.'
+      );
+      return;
+    }
+
     try {
       audioChunksRef.current = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       // Determine preferred mime type
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -218,29 +230,55 @@ export function SymptomInput({
             for (let i = 0; i < event.results.length; ++i) {
               sessionTranscript += event.results[i][0].transcript;
             }
-            
+
             // Append session transcript to the initial text captured when recording started
             setSymptomsText(
-              initialText.trim() 
-                ? `${initialText.trim()} ${sessionTranscript.trim()}` 
+              initialText.trim()
+                ? `${initialText.trim()} ${sessionTranscript.trim()}`
                 : sessionTranscript.trim()
             );
           };
+          rec.onerror = () => {
+            // Keep MediaRecorder audio capture active even if live Web Speech transcription stops
+          };
           rec.start();
           speechRecRef.current = rec;
-        } catch (e) {
-          console.log('Speech recognition not active');
+        } catch {
+          // Speech recognition optional fallback
         }
       }
     } catch (err: any) {
-      console.error('Microphone error:', err);
-      setMicError(
-        currentLang === 'hi'
-          ? 'माइक्रोफ़ोन अनुमति नहीं मिली। कृपया ब्राउज़र सेटिंग्स में माइक की अनुमति दें।'
-          : currentLang === 'mr'
-          ? 'मायक्रोफोन परवानगी मिळाली नाही. कृपया ब्राउझरमध्ये माइक सुरू करा.'
-          : 'Microphone permission denied. Please allow microphone access in browser.'
-      );
+      setIsRecording(false);
+      const errName = String(err?.name || '');
+      const errMsg = String(err?.message || '').toLowerCase();
+      const isDismissed = errMsg.includes('dismissed');
+      const isNotFound = errName === 'NotFoundError' || errMsg.includes('not found');
+
+      if (isNotFound) {
+        setMicError(
+          currentLang === 'hi'
+            ? 'कोई माइक्रोफ़ोन नहीं मिला। कृपया अपने डिवाइस का माइक जांचें या लक्षण लिखें।'
+            : currentLang === 'mr'
+            ? 'मायक्रोफोन आढळला नाही. कृपया डिव्हाइसचा माइक तपासा किंवा लक्षणे टाइप करा.'
+            : 'No microphone detected on this device. Please connect a mic or type your symptoms below.'
+        );
+      } else if (isDismissed) {
+        setMicError(
+          currentLang === 'hi'
+            ? 'माइक्रोफ़ोन अनुमति पॉप-अप बंद कर दिया गया। रिकॉर्डिंग के लिए पुनः दबाएं और Allow चुनें।'
+            : currentLang === 'mr'
+            ? 'मायक्रोफोन परवानगी पॉप-अप बंद झाले. रेकॉर्डिंगसाठी पुन्हा दाबा आणि Allow निवडा.'
+            : 'Microphone prompt was dismissed. Click Record again and choose Allow, or type symptoms below.'
+        );
+      } else {
+        setMicError(
+          currentLang === 'hi'
+            ? 'माइक्रोफ़ोन अनुमति नहीं मिली। कृपया ब्राउज़र सेटिंग्स में माइक की अनुमति दें।'
+            : currentLang === 'mr'
+            ? 'मायक्रोफोन परवानगी मिळाली नाही. कृपया ब्राउझरमध्ये माइक सुरू करा.'
+            : 'Microphone permission denied. Please allow microphone access in browser settings or type symptoms below.'
+        );
+      }
     }
   };
 
@@ -307,11 +345,7 @@ export function SymptomInput({
         <div className="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span>
-            {currentLang === 'hi'
-              ? 'लक्षण व जांच इनपुट'
-              : currentLang === 'mr'
-              ? 'लक्षण व तपासणी इनपुट'
-              : 'Case Symptoms & Input Diagnostics'}
+            {t.caseDiagnostics}
           </span>
         </div>
 
@@ -324,11 +358,7 @@ export function SymptomInput({
           >
             <RotateCcw className="w-3 h-3" />
             <span>
-              {currentLang === 'hi'
-                ? 'सभी इनपुट साफ करें (Clear Log)'
-                : currentLang === 'mr'
-                ? 'सर्व इनपुट पुसा (Clear Log)'
-                : 'Clear Inputs'}
+                {t.clearInputs}
             </span>
           </button>
         )}
@@ -354,11 +384,7 @@ export function SymptomInput({
               <Wheat className="w-3.5 h-3.5 text-amber-400" />
               <span>
                 <span className="hidden min-[450px]:inline">
-                  {currentLang === 'hi'
-                    ? 'चारा व फफूंद जांच (Fodder AI)'
-                    : currentLang === 'mr'
-                    ? 'चारा व बुरशी तपासणी (Fodder AI)'
-                    : 'Fodder Quality & Mold AI'}
+                  {t.fodderAi}
                 </span>
                 <span className="min-[450px]:hidden">Fodder AI</span>
               </span>
@@ -393,7 +419,7 @@ export function SymptomInput({
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400 font-mono">
-                {currentLang === 'hi' ? 'स्मार्ट विजुअल हीटमैप सक्रिय है' : currentLang === 'mr' ? 'स्मार्ट व्हिज्युअल हीटमॅप सुरू आहे' : 'Neural Lesion Heatmap Active'}
+                {t.heatmapActive}
               </span>
               <button
                 type="button"
@@ -421,11 +447,7 @@ export function SymptomInput({
               <div className="text-left">
                 <div className="font-bold text-sm text-white">{t.cameraBtn}</div>
                 <div className="text-[11px] text-emerald-400/80">
-                  {currentLang === 'hi'
-                    ? 'लाइव HUD स्कैनर से फोटो खींचें'
-                    : currentLang === 'mr'
-                    ? 'थेट कॅमेऱ्याने फोटो काढा'
-                    : 'Open Live Viewfinder Scanner'}
+                  {t.cameraLiveDesc}
                 </div>
               </div>
             </button>
@@ -441,11 +463,7 @@ export function SymptomInput({
               <div className="text-left">
                 <div className="font-bold text-sm text-white">{t.uploadBtn}</div>
                 <div className="text-[11px] text-slate-400">
-                  {currentLang === 'hi'
-                    ? 'गैलरी से फोटो चुनें'
-                    : currentLang === 'mr'
-                    ? 'गॅलरीतून फोटो निवडा'
-                    : 'Upload image from storage'}
+                  {t.uploadDescSmall}
                 </div>
               </div>
             </button>
@@ -461,7 +479,7 @@ export function SymptomInput({
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
                 <span className="font-mono text-xs uppercase tracking-wider text-emerald-400 font-bold">
-                  HUD LIVE SCANNER
+                  {t.hudScanner}
                 </span>
               </div>
               <button
@@ -485,7 +503,7 @@ export function SymptomInput({
                   <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest mt-1 block">
-                  ALIGN SYMPTOM
+                  {t.alignSymptom}
                 </span>
               </div>
 
@@ -505,11 +523,7 @@ export function SymptomInput({
               >
                 <Camera className="w-4 h-4" />
                 <span>
-                  {currentLang === 'hi'
-                    ? 'फोटो खींचें (Capture)'
-                    : currentLang === 'mr'
-                    ? 'फोटो काढा'
-                    : 'Capture Photo'}
+                  {t.capturePhoto}
                 </span>
               </button>
               <button
@@ -517,7 +531,7 @@ export function SymptomInput({
                 onClick={stopLiveCamera}
                 className="px-5 py-3 rounded-full bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-semibold cursor-pointer"
               >
-                Cancel
+                {t.cancel}
               </button>
             </div>
           </div>
@@ -545,11 +559,7 @@ export function SymptomInput({
               >
                 <Target className="w-3.5 h-3.5 text-emerald-400" />
                 <span>
-                  {currentLang === 'hi'
-                    ? 'शरीर नक्शा'
-                    : currentLang === 'mr'
-                    ? 'शरीर नकाशा'
-                    : 'Body Map'}
+                  {t.bodyMap}
                 </span>
               </button>
             )}
@@ -650,16 +660,12 @@ export function SymptomInput({
               </button>
               <div>
                 <span className="font-bold text-white block">
-                  {currentLang === 'hi'
-                    ? 'आवाज संदेश रिकॉर्ड हो गया (Voice Note Ready)'
-                    : currentLang === 'mr'
-                    ? 'व्हॉईस नोट जोडली आहे (Voice Note Ready)'
-                    : 'Voice Recording Attached'}
+                    {t.voiceNoteReady}
                 </span>
                 <span className="text-[11px] text-emerald-300/80">
                   {isPlayingAudio
-                    ? 'Playing recorded voice note...'
-                    : 'Tap play to listen or click analyze to process with AI'}
+                    ? t.playingVoiceNote
+                    : t.tapPlayToListen}
                 </span>
               </div>
             </div>
@@ -670,7 +676,7 @@ export function SymptomInput({
                 onClick={startVoiceRecording}
                 className="px-2.5 py-1 text-[11px] font-bold bg-white/10 hover:bg-white/15 rounded-lg text-slate-200 transition cursor-pointer"
               >
-                Re-record
+                {t.reRecord}
               </button>
             </div>
           </div>
@@ -709,7 +715,7 @@ export function SymptomInput({
       <div className="pt-2">
         <button
           type="button"
-          onClick={onAnalyze}
+          onClick={() => onAnalyze()}
           disabled={isLoading || (!symptomsText && !imagePreview && !audioBase64)}
           className={`w-full flex items-center justify-center space-x-3 py-4 px-6 rounded-2xl font-extrabold text-base transition active:scale-[0.99] cursor-pointer ${
             isLoading || (!symptomsText && !imagePreview && !audioBase64)

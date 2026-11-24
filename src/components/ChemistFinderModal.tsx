@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SupportedLanguage, TalukaChemistStore } from '../types';
 import { TALUKA_CHEMIST_STORES } from '../data/ecosystemData';
+import { UI_STRINGS } from '../data/translations';
 
 interface ChemistFinderModalProps {
   isOpen: boolean;
@@ -26,7 +27,8 @@ export function ChemistFinderModal({
   onClose,
   currentLang,
 }: ChemistFinderModalProps) {
-  const [selectedTaluka, setSelectedTaluka] = useState<string>('All');
+  const t = UI_STRINGS[currentLang];
+  const [selectedTaluka, setSelectedTaluka] = useState<string>(t.all || 'All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterHerbalOnly, setFilterHerbalOnly] = useState<boolean>(false);
   const [talukaSearch, setTalukaSearch] = useState<string>('');
@@ -34,14 +36,14 @@ export function ChemistFinderModal({
   if (!isOpen) return null;
 
   // Dynamically derive unique taluka list from data
-  const talukaList = ['All', ...new Set(TALUKA_CHEMIST_STORES.map((s) => s.taluka))].sort();
+  const talukaList = [t.all || 'All', ...new Set(TALUKA_CHEMIST_STORES.map((s) => s.taluka))].sort();
 
-  const filteredTalukas = talukaList.filter((t) =>
-    t.toLowerCase().includes(talukaSearch.toLowerCase())
+  const filteredTalukas = talukaList.filter((tal) =>
+    tal.toLowerCase().includes(talukaSearch.toLowerCase())
   );
 
   const filteredStores = TALUKA_CHEMIST_STORES.filter((store) => {
-    const matchesTaluka = selectedTaluka === 'All' || store.taluka.toLowerCase() === selectedTaluka.toLowerCase();
+    const matchesTaluka = selectedTaluka === (t.all || 'All') || store.taluka.toLowerCase() === selectedTaluka.toLowerCase();
     const matchesSearch =
       store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       store.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,14 +64,14 @@ export function ChemistFinderModal({
             <div>
               <h3 className="font-extrabold text-lg text-white flex items-center space-x-2 font-['Outfit']">
                 <span>
-                  Taluka Veterinary Chemist & Herbal Store Finder
+                  {t.chemistTitle}
                 </span>
                 <span className="text-[10px] font-mono uppercase bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                  Govt Capped MRP
+                  {t.standardLabel}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Locate certified dispensaries stocking Batisa, Topicure, Mastilep & essential first-aid
+                {t.chemistSub}
               </p>
             </div>
           </div>
@@ -91,7 +93,7 @@ export function ChemistFinderModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by store name, taluka, or village..."
+                placeholder={t.chemistSearchPlaceholder}
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -104,19 +106,19 @@ export function ChemistFinderModal({
                 onChange={(e) => setFilterHerbalOnly(e.target.checked)}
                 className="rounded text-emerald-500 focus:ring-emerald-500"
               />
-              <span>In-Stock Batisa & Topicure Only</span>
+              <span>{t.herbalOnly}</span>
             </label>
           </div>
 
           {/* Searchable Taluka Selection */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Taluka</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t.selectTaluka}</span>
               <div className="relative w-40">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Find Taluka..."
+                  placeholder={t.findTaluka}
                   value={talukaSearch}
                   onChange={(e) => setTalukaSearch(e.target.value)}
                   className="w-full pl-7 pr-2 py-1 bg-white/5 border border-white/15 rounded-lg text-[10px] focus:outline-none focus:border-emerald-500/30 text-white"
@@ -138,7 +140,7 @@ export function ChemistFinderModal({
                 </button>
               ))}
               {filteredTalukas.length === 0 && (
-                <span className="text-[10px] text-slate-600 italic px-2">No talukas found matching "{talukaSearch}"</span>
+                <span className="text-[10px] text-slate-600 italic px-2">{t.noTalukasFound} "{talukaSearch}"</span>
               )}
             </div>
           </div>
@@ -148,7 +150,7 @@ export function ChemistFinderModal({
         <div className="p-5 space-y-3.5 max-h-[60vh] overflow-y-auto">
           {filteredStores.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-sm">
-              No matching veterinary stores found in this Taluka.
+              {t.noStoresFound}
             </div>
           ) : (
             filteredStores.map((store) => (
@@ -173,11 +175,11 @@ export function ChemistFinderModal({
                       {store.isOpen24x7 && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-950 text-red-300 border border-red-500/40 flex items-center space-x-1">
                           <Clock className="w-2.5 h-2.5" />
-                          <span>24x7 Open</span>
+                          <span>{t.open24x7}</span>
                         </span>
                       )}
                       <span className="text-xs text-emerald-400 font-mono font-bold">
-                        {store.distanceKm} km away
+                        {store.distanceKm}{t.kmAway}
                       </span>
                     </div>
                     <h4 className="text-sm font-extrabold text-white mt-1">
@@ -190,7 +192,7 @@ export function ChemistFinderModal({
                     className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-xs transition cursor-pointer shadow-md self-start sm:self-center"
                   >
                     <PhoneCall className="w-3.5 h-3.5" />
-                    <span>Call Store</span>
+                    <span>{t.callStore}</span>
                   </a>
                 </div>
 
@@ -201,7 +203,7 @@ export function ChemistFinderModal({
 
                 {/* Live Stock Inventory Badges */}
                 <div className="pt-2 border-t border-white/10 flex flex-wrap items-center gap-1.5 text-[10px]">
-                  <span className="text-slate-400 mr-1 font-mono uppercase">Verified Stock:</span>
+                  <span className="text-slate-400 mr-1 font-mono uppercase">{t.verifiedStock}</span>
 
                   <span
                     className={`px-2 py-0.5 rounded flex items-center space-x-1 ${
@@ -211,7 +213,7 @@ export function ChemistFinderModal({
                     }`}
                   >
                     {store.stockStatus.batisa ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> : <XCircle className="w-2.5 h-2.5 text-slate-600" />}
-                    <span>Batisa Powder</span>
+                    <span>{t.batisaPowder}</span>
                   </span>
 
                   <span
@@ -222,7 +224,7 @@ export function ChemistFinderModal({
                     }`}
                   >
                     {store.stockStatus.topicure ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> : <XCircle className="w-2.5 h-2.5 text-slate-600" />}
-                    <span>Topicure Spray</span>
+                    <span>{t.topicureSpray}</span>
                   </span>
 
                   <span
@@ -233,7 +235,7 @@ export function ChemistFinderModal({
                     }`}
                   >
                     {store.stockStatus.mastilep ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> : <XCircle className="w-2.5 h-2.5 text-slate-600" />}
-                    <span>Mastilep Gel</span>
+                    <span>{t.mastilepGel}</span>
                   </span>
 
                   <span
@@ -244,7 +246,7 @@ export function ChemistFinderModal({
                     }`}
                   >
                     {store.stockStatus.calupGel ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> : <XCircle className="w-2.5 h-2.5 text-slate-600" />}
-                    <span>Calup D3 Gel</span>
+                    <span>{t.calupGel}</span>
                   </span>
 
                   <span
@@ -255,7 +257,7 @@ export function ChemistFinderModal({
                     }`}
                   >
                     {store.stockStatus.kmno4 ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> : <XCircle className="w-2.5 h-2.5 text-slate-600" />}
-                    <span>KMNO4 (Potassium Permanganate)</span>
+                    <span>KMNO4</span>
                   </span>
                 </div>
               </div>
@@ -266,13 +268,13 @@ export function ChemistFinderModal({
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/10 bg-black/50">
           <span className="text-[11px] text-slate-400">
-            Stock updated in real-time by Taluka Sahakari Sangh APIs
+            {t.stockUpdated}
           </span>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition cursor-pointer"
           >
-            Close
+            {t.close}
           </button>
         </div>
       </div>

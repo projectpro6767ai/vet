@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -12,13 +12,14 @@ import {
   Info,
   RotateCcw,
   CheckCircle2,
+  BellRing,
+  MapPin,
 } from 'lucide-react';
 import {
   VetDiagnosisResponse,
   SupportedLanguage,
-  TriageRecord,
   PresetSymptomCase,
-  AppUser,
+  IndiaTaluka,
 } from './types';
 import { UI_STRINGS } from './data/translations';
 import { Header } from './components/Header';
@@ -27,9 +28,7 @@ import { AnimalSelector } from './components/AnimalSelector';
 import { SymptomInput } from './components/SymptomInput';
 import { DiagnosisResult } from './components/DiagnosisResult';
 import { PresetCasesGrid } from './components/PresetCasesGrid';
-import { TriageHistoryModal } from './components/TriageHistoryModal';
 import { HelplineModal } from './components/HelplineModal';
-import { AuthModal } from './components/AuthModal';
 import { SafetyDisclaimer } from './components/SafetyDisclaimer';
 import { EdgeAiModal } from './components/EdgeAiModal';
 import { MvuDispatchModal } from './components/MvuDispatchModal';
@@ -44,28 +43,9 @@ import { EPashuhaatModal } from './components/EPashuhaatModal';
 import { VaccinationTrackerModal } from './components/VaccinationTrackerModal';
 import { NearestHospitalModal } from './components/NearestHospitalModal';
 import { ExhibitionPlaybookModal } from './components/ExhibitionPlaybookModal';
+import { AiSettingsModal } from './components/AiSettingsModal';
+import { TalukaSyncModal } from './components/TalukaSyncModal';
 import { runOfflineEdgeInference } from './utils/edgeInference';
-import {
-  saveTriageRecordToSupabase,
-  fetchTriageRecordsFromSupabase,
-  testSupabaseConnection,
-  getCurrentUser,
-  onAuthStateChange,
-  signOutUser,
-} from './lib/supabase';
-import {
-  auth,
-  onAuthStateChanged,
-  saveDiagnosisToFirestore,
-  fetchUserDiagnosesFromFirestore,
-  deleteDiagnosisFromFirestore,
-  clearUserDiagnosesFromFirestore,
-  subscribeToUserDiagnoses,
-  getOrCreateDeviceId,
-  signOutFirebase,
-} from './lib/firebase';
-
-const STORAGE_KEY = 'vet_mitra_triage_history_v1';
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en');
@@ -80,10 +60,8 @@ export default function App() {
   const [diagnosis, setDiagnosis] = useState<VetDiagnosisResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Modals & Cloud state
-  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  // Modals state
   const [isHelplineOpen, setIsHelplineOpen] = useState<boolean>(false);
-  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isEdgeAiOpen, setIsEdgeAiOpen] = useState<boolean>(false);
   const [isMvuOpen, setIsMvuOpen] = useState<boolean>(false);
   const [isDialectVoiceOpen, setIsDialectVoiceOpen] = useState<boolean>(false);
@@ -97,327 +75,37 @@ export default function App() {
   const [isVaccinationOpen, setIsVaccinationOpen] = useState<boolean>(false);
   const [isTrackHospitalOpen, setIsTrackHospitalOpen] = useState<boolean>(false);
   const [isExhibitionPlaybookOpen, setIsExhibitionPlaybookOpen] = useState<boolean>(false);
-
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [history, setHistory] = useState<TriageRecord[]>([]);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [supabaseConnected, setSupabaseConnected] = useState<boolean>(true);
+  const [isAiSettingsOpen, setIsAiSettingsOpen] = useState<boolean>(false);
+  const [isTalukaSyncOpen, setIsTalukaSyncOpen] = useState<boolean>(false);
+  const [activeTaluka, setActiveTaluka] = useState<IndiaTaluka | null>(() => {
+    try {
+      const saved = localStorage.getItem('vet_mitra_active_taluka');
+      return saved ? (JSON.parse(saved) as IndiaTaluka) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const t = UI_STRINGS[currentLang];
 
-  // Auth Listener for Firebase & Supabase
-  useEffect(() => {
-    // 1. Firebase Auth listener
-    const unsubscribeFirebase = onAuthStateChanged(auth, (fbUser) => {
-      if (fbUser) {
-        setCurrentUser({
-          id: fbUser.uid,
-          email: fbUser.email,
-          displayName: fbUser.displayName,
-          photoURL: fbUser.photoURL,
-          user_metadata: {
-            fullName: fbUser.displayName || fbUser.email?.split('@')[0],
-            role: 'farmer',
-          },
-        });
-      } else {
-        // Fallback check if logged out
-        if (!currentUser?.id?.startsWith('supa_')) {
-          setCurrentUser(null);
-        }
-      }
-    });
-
-    // 2. Supabase Auth listener fallback
-    getCurrentUser().then((user) => {
-      if (user && !auth.currentUser) {
-        setCurrentUser({
-          id: user.id,
-          email: user.email,
-          displayName: user.user_metadata?.fullName,
-          user_metadata: user.user_metadata,
-        });
-      }
-    });
-
-    const { data: authListener } = onAuthStateChange((_event, session) => {
-      if (session?.user && !auth.currentUser) {
-        setCurrentUser({
-          id: session.user.id,
-          email: session.user.email,
-          displayName: session.user.user_metadata?.fullName,
-          user_metadata: session.user.user_metadata,
-        });
-      } else if (!session?.user && !auth.currentUser) {
-        setCurrentUser(null);
-      }
-    });
-
-    return () => {
-      unsubscribeFirebase();
-      authListener?.subscription?.unsubscribe();
-    };
-  }, []);
-
-  // Scoped private storage key per authenticated Gmail account or guest session
-  const userStorageKey = currentUser?.id
-    ? `vet_mitra_history_${currentUser.id}`
-    : `vet_mitra_history_guest`;
-
-  // Explicit User Sign Out handler: completely resets private state and history
-  const handleUserSignOut = async () => {
+  const handleSelectTaluka = (taluka: IndiaTaluka) => {
+    setActiveTaluka(taluka);
     try {
-      await signOutFirebase();
-      await signOutUser();
-    } catch (e) {
-      console.warn('Sign out notice:', e);
-    }
-    setCurrentUser(null);
-    setHistory([]);
-  };
-
-  // Real-time Firestore Database sync & local storage loading per private user account
-  useEffect(() => {
-    // Reset in-memory history when switching user context
-    setHistory([]);
-
-    let localHistory: TriageRecord[] = [];
-    try {
-      const stored = localStorage.getItem(userStorageKey);
-      if (stored) {
-        localHistory = JSON.parse(stored);
-      }
-    } catch (e) {
-      console.warn('Failed to load triage history from localStorage', e);
-    }
-
-    const deviceId = getOrCreateDeviceId();
-    const targetUserId = currentUser?.id || deviceId;
-    const targetEmail = currentUser?.email || null;
-
-    // Filter local records to strictly match current authentication scope
-    const scopedLocalHistory = localHistory.filter((r) => {
-      if (currentUser?.id) {
-        return r.userId === currentUser.id || (r.userEmail && r.userEmail === currentUser.email);
-      }
-      // If guest/logged out, strictly exclude any authenticated user records
-      return !r.userEmail && r.userId === deviceId;
-    });
-    setHistory(scopedLocalHistory);
-
-    // Migrate any guest records to user's private Google account if newly logged in
-    if (currentUser?.id) {
-      try {
-        const guestStored = localStorage.getItem('vet_mitra_history_guest');
-        if (guestStored) {
-          const guestRecords: TriageRecord[] = JSON.parse(guestStored);
-          if (guestRecords && guestRecords.length > 0) {
-            guestRecords.forEach((r) => {
-              saveDiagnosisToFirestore(currentUser.id, r, currentUser.email).catch(() => {});
-            });
-            localStorage.removeItem('vet_mitra_history_guest');
-          }
-        }
-      } catch (err) {
-        console.warn('Guest history migration notice:', err);
-      }
-    }
-
-    // 1. Setup real-time Firestore database subscription for private user history
-    const unsubscribeFirestore = subscribeToUserDiagnoses(
-      targetUserId,
-      targetEmail,
-      (cloudRecords) => {
-        if (cloudRecords) {
-          setHistory((prev) => {
-            const map = new Map<string, TriageRecord>();
-            // Strict filtering by active user scope
-            cloudRecords
-              .filter((r) => {
-                if (currentUser?.id) {
-                  return r.userId === currentUser.id || (r.userEmail && r.userEmail === currentUser.email);
-                }
-                return !r.userEmail && r.userId === deviceId;
-              })
-              .forEach((r) => map.set(r.id, r));
-
-            prev
-              .filter((r) => {
-                if (currentUser?.id) {
-                  return r.userId === currentUser.id || (r.userEmail && r.userEmail === currentUser.email);
-                }
-                return !r.userEmail && r.userId === deviceId;
-              })
-              .forEach((r) => {
-                if (!map.has(r.id)) map.set(r.id, r);
-              });
-
-            const merged = Array.from(map.values()).sort(
-              (a, b) => b.timestamp - a.timestamp
-            );
-            try {
-              localStorage.setItem(userStorageKey, JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
-        }
-      }
-    );
-
-    // 2. Initial on-demand load from Firestore for this user
-    fetchUserDiagnosesFromFirestore(targetUserId, targetEmail)
-      .then((cloudRecords) => {
-        if (cloudRecords && cloudRecords.length > 0) {
-          setHistory((prev) => {
-            const map = new Map<string, TriageRecord>();
-            cloudRecords
-              .filter((r) => {
-                if (currentUser?.id) {
-                  return r.userId === currentUser.id || (r.userEmail && r.userEmail === currentUser.email);
-                }
-                return !r.userEmail && r.userId === deviceId;
-              })
-              .forEach((r) => map.set(r.id, r));
-
-            prev
-              .filter((r) => {
-                if (currentUser?.id) {
-                  return r.userId === currentUser.id || (r.userEmail && r.userEmail === currentUser.email);
-                }
-                return !r.userEmail && r.userId === deviceId;
-              })
-              .forEach((r) => {
-                if (!map.has(r.id)) map.set(r.id, r);
-              });
-
-            const merged = Array.from(map.values()).sort(
-              (a, b) => b.timestamp - a.timestamp
-            );
-            try {
-              localStorage.setItem(userStorageKey, JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
-        }
-      })
-      .catch((err) => console.warn('Firestore private initial fetch:', err));
-
-    return () => {
-      unsubscribeFirestore();
-    };
-  }, [currentUser?.id, currentUser?.email, userStorageKey]);
-
-  // On-demand manual database sync
-  const handleSyncDatabase = async () => {
-    setIsSyncing(true);
-    const deviceId = getOrCreateDeviceId();
-    const targetUserId = currentUser?.id || deviceId;
-    const targetEmail = currentUser?.email || null;
-
-    try {
-      // 1. Fetch private records from Firestore
-      const firestoreRecords = await fetchUserDiagnosesFromFirestore(
-        targetUserId,
-        targetEmail
-      );
-
-      const combinedMap = new Map<string, TriageRecord>();
-      (firestoreRecords || []).forEach((r) => combinedMap.set(r.id, r));
-      history.forEach((r) => combinedMap.set(r.id, r));
-
-      const merged = Array.from(combinedMap.values()).sort(
-        (a, b) => b.timestamp - a.timestamp
-      );
-      setHistory(merged);
-      try {
-        localStorage.setItem(userStorageKey, JSON.stringify(merged));
-      } catch {}
-    } catch (err) {
-      console.warn('Sync error:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Save history to Cloud Firestore Database & Local Cache (private to Google user)
-  const saveToHistory = async (res: VetDiagnosisResponse) => {
-    const deviceId = getOrCreateDeviceId();
-    const targetUserId = currentUser?.id || deviceId;
-    const targetEmail = currentUser?.email || null;
-
-    const record: TriageRecord = {
-      id: `record_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      userId: targetUserId,
-      userEmail: targetEmail || undefined,
-      timestamp: Date.now(),
-      animalType: selectedAnimal,
-      symptomsText,
-      ...(imagePreview ? { imageDataUrl: imagePreview } : {}),
-      diagnosis: res,
-    };
-
-    // Update local state immediately for instant feedback
-    const updated = [record, ...history.filter((r) => r.id !== record.id)].slice(0, 50);
-    setHistory(updated);
-    try {
-      localStorage.setItem(userStorageKey, JSON.stringify(updated));
-    } catch (e) {
-      console.warn('Failed to persist history locally', e);
-    }
-
-    // Persist directly to Cloud Firestore Database under private user account
-    try {
-      await saveDiagnosisToFirestore(targetUserId, record, targetEmail);
-    } catch (e) {
-      console.warn('Firestore database write notice:', e);
-    }
-
-    // Secondary fallback sync to Supabase if configured
-    saveTriageRecordToSupabase(record).catch(() => {});
-  };
-
-  // Clear all history from database and device for active private user
-  const handleClearHistory = async () => {
-    setHistory([]);
-    try {
-      localStorage.removeItem(userStorageKey);
-    } catch (e) {
-      console.warn('Failed to remove history from localStorage:', e);
-    }
-
-    const deviceId = getOrCreateDeviceId();
-    const targetUserId = currentUser?.id || deviceId;
-
-    // Delete in Cloud Firestore Database for this private account
-    try {
-      await clearUserDiagnosesFromFirestore(targetUserId);
-    } catch (err) {
-      console.warn('Failed to clear database records:', err);
-    }
-  };
-
-  // Delete a single record from database and device
-  const handleDeleteRecord = async (id: string) => {
-    const updated = history.filter((r) => r.id !== id);
-    setHistory(updated);
-    try {
-      localStorage.setItem(userStorageKey, JSON.stringify(updated));
-    } catch (e) {
-      console.warn('Failed to update localStorage:', e);
-    }
-
-    // Delete from Cloud Firestore Database
-    try {
-      await deleteDiagnosisFromFirestore(id);
-    } catch (err) {
-      console.warn('Failed to delete from Firestore database:', err);
-    }
+      localStorage.setItem('vet_mitra_active_taluka', JSON.stringify(taluka));
+    } catch {}
   };
 
   // Perform AI Diagnosis (Supports Live Server & On-Device Offline TFLite Edge Inference)
-  const handleAnalyze = async () => {
-    if (!symptomsText && !imagePreview && !audioBase64) {
-      setErrorMsg('Please enter symptoms, upload a photo, or record a voice note.');
+  const handleAnalyze = async (overrideAnimal?: string, overrideSymptoms?: string) => {
+    const animalToUse =
+      typeof overrideAnimal === 'string' && overrideAnimal.trim().length > 0
+        ? overrideAnimal
+        : selectedAnimal;
+    const symptomsToUse =
+      typeof overrideSymptoms === 'string' ? overrideSymptoms : symptomsText;
+
+    if (!symptomsToUse && !imagePreview && !audioBase64) {
+      setErrorMsg(t.pleaseEnterSymptoms);
       return;
     }
 
@@ -428,9 +116,8 @@ export default function App() {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       console.log('⚡ Offline detected: Running on-device TFLite/ONNX Edge AI inference...');
       try {
-        const edgeRes = runOfflineEdgeInference(selectedAnimal, symptomsText);
+        const edgeRes = runOfflineEdgeInference(animalToUse, symptomsToUse, imagePreview, currentLang);
         setDiagnosis(edgeRes.diagnosis);
-        saveToHistory(edgeRes.diagnosis);
         window.scrollTo({ top: 120, behavior: 'smooth' });
         return;
       } catch (edgeErr) {
@@ -447,8 +134,8 @@ export default function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          animalType: selectedAnimal,
-          symptomsText,
+          animalType: animalToUse,
+          symptomsText: symptomsToUse,
           imageBase64: imagePreview,
           imageMimeType,
           audioBase64,
@@ -459,22 +146,21 @@ export default function App() {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Server error: ${response.status}`);
+        throw new Error(errData.error || `${t.serverError}: ${response.status}`);
       }
 
       const data: VetDiagnosisResponse = await response.json();
       setDiagnosis(data);
-      saveToHistory(data);
 
       // Scroll to diagnosis result
       window.scrollTo({ top: 120, behavior: 'smooth' });
     } catch (err: any) {
-      console.error('Network diagnosis failed, attempting On-Device Edge fallback:', err);
+      const errReason = err?.message || String(err || 'Unknown error');
+      console.error('Network diagnosis failed, attempting On-Device Edge fallback:', errReason);
       // Seamless On-Device Edge AI Fallback for rural Taluka zones
       try {
-        const edgeRes = runOfflineEdgeInference(selectedAnimal, symptomsText, imagePreview, currentLang);
+        const edgeRes = runOfflineEdgeInference(animalToUse, symptomsToUse, imagePreview, currentLang);
         setDiagnosis(edgeRes.diagnosis);
-        saveToHistory(edgeRes.diagnosis);
         window.scrollTo({ top: 120, behavior: 'smooth' });
         return;
       } catch (edgeErr) {
@@ -500,8 +186,10 @@ export default function App() {
 
   // Select Preset Case
   const handleSelectPreset = (preset: PresetSymptomCase) => {
-    setSelectedAnimal(preset.animalType);
-    setSymptomsText(preset.sampleSymptoms);
+    const animal = preset.animalType[currentLang] || preset.animalType.en;
+    const symptoms = preset.sampleSymptoms;
+    setSelectedAnimal(animal);
+    setSymptomsText(symptoms);
     setImagePreview(null);
     setAudioBase64(null);
     setDiagnosis(null);
@@ -509,6 +197,11 @@ export default function App() {
 
     // Smooth scroll to input
     window.scrollTo({ top: 180, behavior: 'smooth' });
+
+    // Automatically trigger analysis
+    setTimeout(() => {
+      handleAnalyze(animal, symptoms);
+    }, 200);
   };
 
   // Reset form for fresh case
@@ -537,13 +230,7 @@ export default function App() {
       <Header
         currentLang={currentLang}
         onLangChange={setCurrentLang}
-        historyCount={history.length}
-        onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenHelpline={() => setIsHelplineOpen(true)}
-        currentUser={currentUser}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onSignOut={handleUserSignOut}
-        onOpenEdgeAi={() => setIsEdgeAiOpen(true)}
         onOpenOutbreak={() => setIsOutbreakOpen(true)}
         onOpenCalculator={() => setIsRemedyOpen(true)}
         onOpenDialectVoice={() => setIsDialectVoiceOpen(true)}
@@ -551,6 +238,9 @@ export default function App() {
         onOpenEPashuhaat={() => setIsEPashuhaatOpen(true)}
         onOpenVaccination={() => setIsVaccinationOpen(true)}
         onOpenExhibitionPlaybook={() => setIsExhibitionPlaybookOpen(true)}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
+        onOpenTalukaSync={() => setIsTalukaSyncOpen(true)}
+        activeTaluka={activeTaluka}
         hasActiveDiagnosis={diagnosis !== null}
       />
 
@@ -562,6 +252,50 @@ export default function App() {
 
       {/* 3. Main Content Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 relative z-10">
+        {/* Selected Taluka Hyper-Local Health Alert Banner */}
+        {activeTaluka && (
+          <div
+            className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm backdrop-blur-md shadow-lg ${
+              activeTaluka.alertLevel === 'ALERT'
+                ? 'bg-red-950/40 border-red-500/40 text-red-100'
+                : activeTaluka.alertLevel === 'ADVISORY'
+                ? 'bg-amber-950/40 border-amber-500/40 text-amber-100'
+                : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-100'
+            }`}
+          >
+            <div className="flex items-start space-x-3">
+              <BellRing className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="font-extrabold flex items-center flex-wrap gap-2">
+                  <span className="inline-flex items-center space-x-1">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>
+                      {activeTaluka.taluka}, {activeTaluka.district} ({activeTaluka.state})
+                    </span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-black/40 border border-white/10">
+                    {activeTaluka.alertLevel}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-200">
+                  {currentLang === 'hi'
+                    ? activeTaluka.healthAlertHi
+                    : currentLang === 'mr'
+                    ? activeTaluka.healthAlertMr
+                    : activeTaluka.healthAlert}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsTalukaSyncOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs transition shrink-0 cursor-pointer self-start sm:self-center"
+            >
+              Change Taluka
+            </button>
+          </div>
+        )}
+
         {/* Error Notification */}
         {errorMsg && (
           <div className="p-4 rounded-2xl bg-red-950/60 border border-red-500/40 text-red-200 flex items-start space-x-3 text-sm shadow-xl backdrop-blur-md animate-in fade-in">
@@ -647,7 +381,7 @@ export default function App() {
                 setAudioBase64={setAudioBase64}
                 audioMimeType={audioMimeType}
                 setAudioMimeType={setAudioMimeType}
-                onAnalyze={handleAnalyze}
+                onAnalyze={() => handleAnalyze()}
                 isLoading={isLoading}
                 onOpenVisualBodyMap={() => setIsBodyMapOpen(true)}
                 onOpenFodderScanner={() => setIsFodderOpen(true)}
@@ -666,44 +400,11 @@ export default function App() {
         <SafetyDisclaimer currentLang={currentLang} />
       </main>
 
-      {/* History Drawer Modal */}
-      <TriageHistoryModal
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        history={history}
-        onSelectRecord={(rec) => {
-          setDiagnosis(rec.diagnosis);
-          setSelectedAnimal(rec.animalType);
-          setSymptomsText(rec.symptomsText);
-          if (rec.imageDataUrl) setImagePreview(rec.imageDataUrl);
-        }}
-        onClearHistory={handleClearHistory}
-        onDeleteRecord={handleDeleteRecord}
-        onRefresh={handleSyncDatabase}
-        isSyncing={isSyncing}
-        isDatabaseConnected={true}
-        currentUser={currentUser}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        currentLang={currentLang}
-      />
-
       {/* 24x7 1962 Helpline Modal */}
       <HelplineModal
         isOpen={isHelplineOpen}
         onClose={() => setIsHelplineOpen(false)}
         currentLang={currentLang}
-      />
-
-      {/* Supabase & Firebase Authentication & Profile Modal */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        currentUser={currentUser}
-        currentLang={currentLang}
-        onAuthSuccess={(user) => {
-          setCurrentUser(user);
-        }}
-        onSignOut={handleUserSignOut}
       />
 
       {/* 1. Offline-First AI Edge Inference Modal */}
@@ -713,7 +414,6 @@ export default function App() {
         currentLang={currentLang}
         onApplyDiagnosis={(d) => {
           setDiagnosis(d);
-          saveToHistory(d);
         }}
       />
 
@@ -723,12 +423,14 @@ export default function App() {
         onClose={() => setIsMvuOpen(false)}
         diagnosis={diagnosis}
         currentLang={currentLang}
+        activeTaluka={activeTaluka}
       />
 
       {/* 3. Audio-First Interactive AI (Full Local Dialect Voice Assistant) */}
       <DialectVoiceModal
         isOpen={isDialectVoiceOpen}
         onClose={() => setIsDialectVoiceOpen(false)}
+        currentLang={currentLang}
         onDispatchVoiceCommand={(command, animal) => {
           setSymptomsText(command);
           if (animal) setSelectedAnimal(animal);
@@ -744,6 +446,7 @@ export default function App() {
         isOpen={isOutbreakOpen}
         onClose={() => setIsOutbreakOpen(false)}
         currentLang={currentLang}
+        activeTaluka={activeTaluka}
       />
 
       {/* 5. Smart Feed & Ayurvedic Medicine Calculator */}
@@ -782,7 +485,12 @@ export default function App() {
         onClose={() => setIsFodderOpen(false)}
         currentLang={currentLang}
         onApplyFodderReport={(report) => {
-          const note = `[Fodder AI Scan: ${report.sampleType} - Safety Score: ${report.safetyScore}/100, Aflatoxin Risk: ${report.aflatoxinRiskLevel}, Mold: ${report.moldDetected ? 'Detected' : 'Negative'}, Est. ${report.estimatedPpb} ppb]`;
+          const type = currentLang === 'mr' ? report.sampleTypeMarathi : report.sampleType;
+          const status = report.moldDetected 
+            ? (currentLang === 'hi' ? 'पाया गया' : currentLang === 'mr' ? 'आढळली' : 'Detected') 
+            : (currentLang === 'hi' ? 'नहीं' : currentLang === 'mr' ? 'नाही' : 'Negative');
+          const riskLabel = currentLang === 'hi' ? 'जोखिम' : currentLang === 'mr' ? 'धोका' : 'Risk';
+          const note = `[${t.fodderAi}: ${type} - ${t.fodderSafetyScore}: ${report.safetyScore}/100, Aflatoxin ${riskLabel}: ${report.aflatoxinRiskLevel}, Mold: ${status}, Est. ${report.estimatedPpb} ppb]`;
           setSymptomsText((prev) => (prev ? `${prev}\n${note}` : note));
         }}
       />
@@ -824,6 +532,22 @@ export default function App() {
           setIsExhibitionPlaybookOpen(false);
           setIsEdgeAiOpen(true);
         }}
+      />
+
+      {/* 15. AI Provider Settings Modal (Groq AI) */}
+      <AiSettingsModal
+        isOpen={isAiSettingsOpen}
+        onClose={() => setIsAiSettingsOpen(false)}
+        currentLang={currentLang}
+      />
+
+      {/* 16. India 349 State Talukas Sync Modal */}
+      <TalukaSyncModal
+        isOpen={isTalukaSyncOpen}
+        onClose={() => setIsTalukaSyncOpen(false)}
+        currentLang={currentLang}
+        activeTaluka={activeTaluka}
+        onSelectTaluka={handleSelectTaluka}
       />
     </div>
   );

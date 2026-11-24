@@ -30,7 +30,7 @@ export function runOfflineEdgeInference(
     source: 'offline_edge',
     diagnostic_note:
       baseDiagnosis.diagnostic_note ||
-      'Processed via On-Device TFLite Edge Inference. For live Gemini AI Multimodal Vision & Audio, verify backend API connectivity.',
+      'Processed via On-Device TFLite Edge Inference. For live Groq Cloud AI analysis, verify backend API connectivity.',
   };
 
   const telemetry: EdgeInferenceDetails = {

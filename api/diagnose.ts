@@ -1,4 +1,4 @@
-import { triageWithGemini } from '../src/services/aiDiagnosis';
+import { routeAiInference } from '../src/services/aiRouter';
 
 /**
  * Vercel Serverless Function for Veterinary Multimodal Diagnosis.
@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
-    const diagnosis = await triageWithGemini(body);
+    const diagnosis = await routeAiInference(body);
     return res.status(200).json(diagnosis);
   } catch (error: any) {
     console.error('API /api/diagnose error:', error);

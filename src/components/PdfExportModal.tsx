@@ -96,18 +96,10 @@ export function PdfExportModal({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black font-['Outfit'] text-white">
-                {currentLang === 'mr'
-                  ? 'वैद्यकीय तपासणी इतिहास व डॉक्टर QR पत्रक'
-                  : currentLang === 'hi'
-                  ? 'चिकित्सकीय रोगी इतिहास और डॉक्टर QR पर्ची'
-                  : 'Clinical Patient History & Doctor QR Docket'}
+                {t.clinicalDocketTitle}
               </h3>
               <p className="text-xs text-slate-400">
-                {currentLang === 'mr'
-                  ? 'तालुका पशुवैद्यकीय दवाखान्यासाठी अधिकृत अहवाल'
-                  : currentLang === 'hi'
-                  ? 'तालुका पशु चिकित्सालय के लिए आधिकारिक पर्ची'
-                  : 'Export official diagnostic paperwork for Taluka Para-vets and Dispensaries'}
+                {t.clinicalDocketSub}
               </p>
             </div>
           </div>
@@ -164,33 +156,21 @@ export function PdfExportModal({
               </div>
               <div>
                 <div className="text-[11px] font-mono uppercase tracking-widest text-emerald-800 font-bold">
-                  {currentLang === 'mr'
-                    ? 'तालुका पशुवैद्यकीय दवाखाना • राष्ट्रीय पशुरोग नियंत्रण'
-                    : currentLang === 'hi'
-                    ? 'तालुका पशु चिकित्सालय • राष्ट्रीय पशु रोग नियंत्रण'
-                    : 'Taluka Veterinary Dispensary • National Animal Disease Control'}
+                  {t.govHeaderSub}
                 </div>
                 <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  {currentLang === 'mr'
-                    ? 'वेट-मित्र एआय वैद्यकीय तपासणी पत्रक'
-                    : currentLang === 'hi'
-                    ? 'वेट-मित्र एआई चिकित्सकीय जांच पर्ची'
-                    : 'VET-MITRA AI CLINICAL TRIAGE DOCKET'}
+                  {t.triageDocketHeader}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  {currentLang === 'mr'
-                    ? '१९६२ फिरते पशुवैद्यकीय पथक (MVU) टेलीमेडिसिन प्रणाली'
-                    : currentLang === 'hi'
-                    ? '1962 मोबाइल वेटरनरी यूनिट (MVU) टेलीमेडिसिन प्रणाली'
-                    : 'Integrated 1962 Mobile Veterinary Unit (MVU) Telemedicine System'}
+                  {t.mvuSystemTitle}
                 </p>
               </div>
             </div>
 
             <div className="text-right sm:text-right font-mono text-xs text-slate-700 bg-slate-100 p-2 rounded-lg border border-slate-300">
               <div className="font-bold text-slate-900">{docketNumber}</div>
-              <div>{currentLang === 'mr' || currentLang === 'hi' ? 'दिनांक:' : 'Date:'} {new Date().toLocaleDateString('en-IN')}</div>
-              <div>{currentLang === 'mr' || currentLang === 'hi' ? 'वेळ:' : 'Time:'} {new Date().toLocaleTimeString('en-IN')}</div>
+              <div>{t.docketDate} {new Date().toLocaleDateString('en-IN')}</div>
+              <div>{t.docketTime} {new Date().toLocaleTimeString('en-IN')}</div>
             </div>
           </div>
 
@@ -198,24 +178,24 @@ export function PdfExportModal({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
             <div>
               <span className="text-slate-500 block uppercase font-mono text-[10px]">
-                {currentLang === 'mr' ? 'तपासलेले जनावर:' : currentLang === 'hi' ? 'पहचाना गया पशु:' : 'Identified Subject:'}
+                {t.docketSubject}
               </span>
               <span className="font-bold text-slate-900 text-sm">{diagnosis.animal_identified}</span>
             </div>
             <div>
               <span className="text-slate-500 block uppercase font-mono text-[10px]">
-                {currentLang === 'mr' ? 'धोक्याची पातळी:' : currentLang === 'hi' ? 'गंभीरता स्तर:' : 'Triage Urgency:'}
+                {t.docketUrgency}
               </span>
               <span className="font-black text-sm text-slate-900">{diagnosis.urgency_badge}</span>
             </div>
             <div>
               <span className="text-slate-500 block uppercase font-mono text-[10px]">
-                {currentLang === 'mr' ? 'डॉक्टर पाचारण:' : currentLang === 'hi' ? 'डॉक्टर आवश्यकता:' : 'Dispatch Escalation:'}
+                {t.docketDispatch}
               </span>
               <span className="font-bold text-slate-900">
                 {diagnosis.is_emergency_dispatch_needed
-                  ? (currentLang === 'mr' ? '१९६२ रुग्णवाहिका पाचारण' : currentLang === 'hi' ? '1962 एम्बुलेंस बुलाई गई' : 'RED 1962 Dispatched')
-                  : (currentLang === 'mr' ? 'घरगुती निगा व देखरेख' : currentLang === 'hi' ? 'घरेलू देखभाल व निगरानी' : 'Routine Home Care')}
+                  ? t.docketRedDispatch
+                  : t.docketHomeCare}
               </span>
             </div>
           </div>
@@ -223,7 +203,7 @@ export function PdfExportModal({
           {/* Suspected Diagnosis */}
           <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
             <div className="text-[10px] font-mono font-bold text-emerald-800 uppercase">
-              {currentLang === 'mr' ? 'संभाव्य आजार / स्थिती' : currentLang === 'hi' ? 'संभावित रोग / स्थिति' : 'Suspected Pathological Condition'}
+              {t.docketSuspectedTitle}
             </div>
             <div className="text-lg font-extrabold text-emerald-950 mt-0.5">
               {diagnosis.suspected_condition}
@@ -237,7 +217,7 @@ export function PdfExportModal({
           {symptomsText && (
             <div className="text-xs text-slate-700">
               <span className="font-bold uppercase font-mono text-[10px] text-slate-500 block">
-                {currentLang === 'mr' ? 'पशुपालकाने नोंदवलेली लक्षणे:' : currentLang === 'hi' ? 'पशुपालक द्वारा बताए गए लक्षण:' : 'Farmer Reported Symptoms / Field Notes:'}
+                {t.docketSymptomTitle}
               </span>
               <p className="p-2 bg-slate-50 rounded border border-slate-200 mt-1 italic">
                 "{symptomsText}"
@@ -248,11 +228,7 @@ export function PdfExportModal({
           {/* First Aid & Para-vet Protocol */}
           <div className="space-y-2">
             <div className="text-xs font-bold font-mono uppercase text-slate-700 border-b pb-1">
-              {currentLang === 'mr'
-                ? 'तातडीचे प्राथमिक उपचार व स्थिरीकरण पद्धती:'
-                : currentLang === 'hi'
-                ? 'तुरंत प्राथमिक उपचार व स्थिरीकरण प्रोटोकॉल:'
-                : 'Field First-Aid & Stabilization Protocol (NDDB/TANUVAS):'}
+              {t.docketFirstAidTitle}
             </div>
             <div className="space-y-1.5 text-xs text-slate-800">
               {diagnosis.first_aid_steps.map((step, idx) => (
@@ -268,13 +244,13 @@ export function PdfExportModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
               <span className="font-bold text-amber-900 block font-mono text-[10px] uppercase">
-                {currentLang === 'mr' ? '⚠️ काय करू नये (सक्त ताकीद):' : currentLang === 'hi' ? '⚠️ क्या भूलकर भी न करें (चेतावनी):' : '⚠️ Contraindications / What NOT to Do:'}
+                {t.docketNoDoTitle}
               </span>
               <p className="text-amber-950 mt-1">{diagnosis.what_not_to_do}</p>
             </div>
             <div className="p-3 bg-teal-50 rounded-xl border border-teal-200">
               <span className="font-bold text-teal-900 block font-mono text-[10px] uppercase">
-                {currentLang === 'mr' ? 'शिफारस केलेले स्थानिक औषध / साहित्य:' : currentLang === 'hi' ? 'नजदीकी स्टोर से उपयोगी दवा/सामग्री:' : 'Recommended Chemist / Co-op Product:'}
+                {t.docketProductTitle}
               </span>
               <p className="text-teal-950 mt-1 font-bold">{diagnosis.recommended_local_product}</p>
             </div>
@@ -298,15 +274,11 @@ export function PdfExportModal({
                 <div className="font-bold text-slate-900 flex items-center space-x-1">
                   <ShieldCheck className="w-4 h-4 text-emerald-700" />
                   <span>
-                    {currentLang === 'mr' ? 'डॉक्टर पडताळणी QR कोड' : currentLang === 'hi' ? 'डॉक्टर सत्यापन QR कोड' : 'Doctor Verification QR Code'}
+                    {t.docketQrTitle}
                   </span>
                 </div>
                 <p className="text-slate-500 text-[11px] max-w-[240px]">
-                  {currentLang === 'mr'
-                    ? 'संपूर्ण वैद्यकीय माहिती तपासण्यासाठी कोणत्याही स्मार्टफोनने स्कॅन करा.'
-                    : currentLang === 'hi'
-                    ? 'पूरी चिकित्सकीय जानकारी लोड करने के लिए किसी भी स्मार्टफोन से स्कैन करें।'
-                    : 'Scan with any smartphone or hospital terminal to load full cryptographic case telemetry.'}
+                  {t.docketQrDesc}
                 </p>
                 <div className="text-[10px] font-mono text-emerald-800 font-bold mt-1">
                   1962 MVU Verified Docket
@@ -316,13 +288,13 @@ export function PdfExportModal({
 
             <div className="text-right border-t sm:border-t-0 pt-3 sm:pt-0 w-full sm:w-auto">
               <div className="w-44 h-12 border-b border-dashed border-slate-400 mb-1 ml-auto flex items-end justify-center text-[10px] text-slate-400">
-                {currentLang === 'mr' ? '[पशुवैद्यकीय अधिकाऱ्याची स्वाक्षरी]' : currentLang === 'hi' ? '[अधिकृत पशु चिकित्सक हस्ताक्षर]' : '[Authorized Para-vet Signature]'}
+                {t.docketSignature}
               </div>
               <div className="text-[11px] font-bold text-slate-800">
-                {currentLang === 'mr' ? 'पशुधन विकास अधिकारी (LDO)' : currentLang === 'hi' ? 'पशुधन विकास अधिकारी (LDO)' : 'Attending Livestock Development Officer (LDO)'}
+                {t.docketLdo}
               </div>
               <div className="text-[10px] text-slate-500">
-                {currentLang === 'mr' ? 'तालुका पशुवैद्यकीय सर्वचिकित्सालय' : currentLang === 'hi' ? 'तालुका पशु चिकित्सालय' : 'Taluka Veterinary Dispensary'}
+                {t.docketTalukaHospital}
               </div>
             </div>
           </div>

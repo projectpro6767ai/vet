@@ -14,18 +14,21 @@ import {
   Info,
 } from 'lucide-react';
 import { INITIAL_OUTBREAK_HOTSPOTS } from '../data/outbreakData';
-import { OutbreakHotspot, SupportedLanguage } from '../types';
+import { IndiaTaluka, OutbreakHotspot, SupportedLanguage } from '../types';
+import { UI_STRINGS } from '../data/translations';
 
 interface OutbreakMapModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentLang: SupportedLanguage;
+  activeTaluka?: IndiaTaluka | null;
 }
 
 export function OutbreakMapModal({
   isOpen,
   onClose,
   currentLang,
+  activeTaluka,
 }: OutbreakMapModalProps) {
   const [hotspots, setHotspots] = useState<OutbreakHotspot[]>(INITIAL_OUTBREAK_HOTSPOTS);
   const [selectedDiseaseFilter, setSelectedDiseaseFilter] = useState<string>('ALL');
@@ -37,8 +40,33 @@ export function OutbreakMapModal({
   const [reportDisease, setReportDisease] = useState('Lumpy Skin Disease (LSD)');
   const [reportCount, setReportCount] = useState('2');
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<string | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const t = UI_STRINGS[currentLang];
 
   if (!isOpen) return null;
+
+  const handleRequestGpsLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsStatus('Geolocation not supported.');
+      return;
+    }
+
+    setGpsStatus(t.analyzingGps);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserCoords({ lat, lng });
+        setGpsStatus(t.gpsAcquired);
+      },
+      (error) => {
+        console.warn('Geolocation error:', error);
+        setGpsStatus(t.gpsDenied);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
 
   const filteredHotspots =
     selectedDiseaseFilter === 'ALL'
@@ -53,13 +81,13 @@ export function OutbreakMapModal({
       id: `outbreak_custom_${Date.now()}`,
       diseaseName: reportDisease,
       diseaseMarathi: reportDisease,
-      villageName: `${reportVillage} (Your Village)`,
-      taluka: 'Baramati',
+      villageName: `${reportVillage} (${currentLang === 'mr' ? 'तुमचे गाव' : currentLang === 'hi' ? 'आपका गांव' : 'Your Village'})`,
+      taluka: activeTaluka ? `${activeTaluka.taluka}, ${activeTaluka.stateCode}` : 'Baramati',
       severity: 'RED',
       activeCases: parseInt(reportCount, 10) || 1,
       quarantineRadiusKm: 5.0,
       distanceFromUserKm: 0.8,
-      lastUpdated: 'Just now (Farmer reported)',
+      lastUpdated: 'Just now',
       preventiveAction: 'Alert issued to Taluka LDO and neighboring dairy farmers. Quarantine initiated.',
       preventiveActionMarathi: 'तालुका पशुवैद्यकीय अधिकारी व शेजारील गावांना सतर्कतेचा इशारा पाठवला.',
       coordinates: { x: 50, y: 50 },
@@ -87,14 +115,14 @@ export function OutbreakMapModal({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
-                  Local Outbreak Warning & Geofencing
+                  {t.outbreakWarning}
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-950 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-black uppercase">
                   Taluka Radar
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Disease Hotspot Surveillance & Automated 5km Geofence Alert System
+                {t.outbreakWarningSub}
               </p>
             </div>
           </div>
@@ -107,23 +135,38 @@ export function OutbreakMapModal({
         </div>
 
         {/* Automated Geofence Warning Alert */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/80 via-amber-950/40 to-black/60 border border-red-500/50 flex items-start space-x-3.5 shadow-lg">
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5 animate-bounce" />
-          <div className="flex-1 text-xs sm:text-sm">
-            <div className="font-extrabold text-red-200">
-              ⚠️ 5km Geofence Alert: Lumpy outbreak detected in neighboring Chincholi village!
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/80 via-amber-950/40 to-black/60 border border-red-500/50 space-y-3 shadow-lg">
+          <div className="flex items-start space-x-3.5">
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5 animate-bounce" />
+            <div className="flex-1 text-xs sm:text-sm space-y-1">
+              <div className="font-extrabold text-red-200">
+                {t.geofenceAlert}
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                {t.geofenceDesc}
+              </p>
+              {gpsStatus && (
+                <p className="text-emerald-400 font-mono text-xs font-bold pt-1">
+                  {gpsStatus} {userCoords ? `(Lat: ${userCoords.lat.toFixed(4)}, Lng: ${userCoords.lng.toFixed(4)})` : ''}
+                </p>
+              )}
             </div>
-            <p className="text-slate-300 mt-0.5 leading-relaxed">
-              Your farm in Pimpalgaon is within 3.2 km of an active Lumpy Skin Disease hotspot (14 confirmed cases).
-              Vector flies (डास व माश्या) can travel up to 5 km. Keep cow-shed fumigated with dry neem leaves and check all animals.
-            </p>
           </div>
-          <button
-            onClick={() => setShowReportForm(!showReportForm)}
-            className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-black font-extrabold text-xs transition shrink-0 cursor-pointer shadow-md"
-          >
-            {showReportForm ? 'Close Form' : 'Report Outbreak'}
-          </button>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+            <button
+              onClick={handleRequestGpsLocation}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition cursor-pointer shadow"
+            >
+              {t.requestGpsLocation}
+            </button>
+            <button
+              onClick={() => setShowReportForm(!showReportForm)}
+              className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-black font-extrabold text-xs transition shrink-0 cursor-pointer shadow-md"
+            >
+              {showReportForm ? t.closeForm : t.reportOutbreak}
+            </button>
+          </div>
         </div>
 
         {/* Report New Outbreak Form Drawer */}
@@ -134,12 +177,12 @@ export function OutbreakMapModal({
           >
             <div className="text-sm font-bold text-white flex items-center space-x-2">
               <Plus className="w-4 h-4 text-emerald-400" />
-              <span>Report Suspected Disease in My Village</span>
+              <span>{t.reportSuspected}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Village Name:</label>
+                <label className="text-xs text-slate-400 block mb-1">{t.villageName}</label>
                 <input
                   type="text"
                   required
@@ -151,21 +194,21 @@ export function OutbreakMapModal({
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Suspected Disease:</label>
+                <label className="text-xs text-slate-400 block mb-1">{t.suspectedDisease}</label>
                 <select
                   value={reportDisease}
                   onChange={(e) => setReportDisease(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-sm text-white focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="Lumpy Skin Disease (LSD)">Lumpy Skin Disease (LSD)</option>
-                  <option value="Foot & Mouth Disease (FMD)">Foot & Mouth Disease (FMD)</option>
+                  <option value="Lumpy Skin Disease (LSD)">{t.lumpySkinFilter}</option>
+                  <option value="Foot & Mouth Disease (FMD)">{t.footMouthFilter}</option>
                   <option value="Black Quarter (BQ)">Black Quarter (BQ)</option>
                   <option value="Acute Enteritis">Severe Enteritis</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Affected Animals (Cases):</label>
+                <label className="text-xs text-slate-400 block mb-1">{t.affectedAnimals}</label>
                 <input
                   type="number"
                   min="1"
@@ -179,20 +222,20 @@ export function OutbreakMapModal({
 
             <div className="flex items-center justify-between pt-1">
               <span className="text-[11px] text-slate-400">
-                Reports automatically update the Taluka Geofence Radar and notify neighboring dairy farmers.
+                {t.telemetryActive}
               </span>
               <button
                 type="submit"
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-xs transition cursor-pointer"
               >
-                {reportSuccess ? 'Report Successful!' : 'Submit Outbreak'}
+                {reportSuccess ? t.reportSuccess : t.submitOutbreak}
               </button>
             </div>
           </form>
         )}
 
         {/* Filter Pills */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
           <button
             onClick={() => setSelectedDiseaseFilter('ALL')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
@@ -201,7 +244,7 @@ export function OutbreakMapModal({
                 : 'bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
           >
-            All Hotspots
+            {t.allHotspots}
           </button>
           <button
             onClick={() => setSelectedDiseaseFilter('Lumpy')}
@@ -211,7 +254,7 @@ export function OutbreakMapModal({
                 : 'bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
           >
-            🔴 Lumpy Skin (LSD)
+            🔴 {t.lumpySkinFilter}
           </button>
           <button
             onClick={() => setSelectedDiseaseFilter('Foot')}
@@ -221,7 +264,7 @@ export function OutbreakMapModal({
                 : 'bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
           >
-            🟡 Foot & Mouth (FMD)
+            🟡 {t.footMouthFilter}
           </button>
           <button
             onClick={() => setSelectedDiseaseFilter('Mastitis')}
@@ -231,7 +274,7 @@ export function OutbreakMapModal({
                 : 'bg-white/5 text-slate-400 hover:bg-white/10'
             }`}
           >
-            Mastitis Contagion
+            {t.mastitisFilter}
           </button>
         </div>
 
@@ -266,7 +309,7 @@ export function OutbreakMapModal({
                 <circle r="6" fill="#3b82f6" opacity="0.3" className="animate-ping" />
                 <circle r="3" fill="#3b82f6" stroke="#ffffff" strokeWidth="0.8" />
                 <text x="0" y="-5" textAnchor="middle" fill="#93c5fd" fontSize="3.5" fontWeight="bold">
-                  Your Farm
+                  {t.yourFarm}
                 </text>
               </g>
 
@@ -282,7 +325,7 @@ export function OutbreakMapModal({
                 opacity="0.6"
               />
               <text x="50" y="74" textAnchor="middle" fill="#ef4444" fontSize="2.8" fontStyle="italic">
-                5km Danger Geofence
+                {t.dangerGeofence}
               </text>
 
               {/* Hotspot Markers */}
@@ -319,7 +362,9 @@ export function OutbreakMapModal({
             </svg>
 
             <div className="absolute bottom-2 left-3 text-[10px] font-mono text-slate-400 bg-black/60 px-2 py-1 rounded border border-white/10">
-              Sector: Baramati Rural Livestock Belt (22 Panchayats)
+              {activeTaluka
+                ? `Synced Sector: ${activeTaluka.taluka}, ${activeTaluka.district} (${activeTaluka.state})`
+                : 'Sector: Baramati Rural Livestock Belt (22 Panchayats)'}
             </div>
           </div>
 
@@ -335,16 +380,16 @@ export function OutbreakMapModal({
                         : 'bg-amber-950 border border-amber-500/50 text-amber-300'
                     }`}
                   >
-                    {activeHotspot.severity === 'RED' ? '🔴 High Risk (Hotspot)' : '🟡 Alert Warning'}
+                    {activeHotspot.severity === 'RED' ? t.highRisk : t.alertWarning}
                   </span>
                   <span className="text-xs font-mono text-slate-400">
-                    {activeHotspot.distanceFromUserKm} km away
+                    {activeHotspot.distanceFromUserKm} km {currentLang === 'hi' ? 'दूर' : currentLang === 'mr' ? 'लांब' : 'away'}
                   </span>
                 </div>
 
                 <div>
                   <div className="text-base font-extrabold text-white">
-                    {activeHotspot.diseaseName}
+                    {currentLang === 'mr' ? activeHotspot.diseaseMarathi : activeHotspot.diseaseName}
                   </div>
                   <div className="text-xs font-bold text-emerald-400">
                     {activeHotspot.villageName}
@@ -353,35 +398,35 @@ export function OutbreakMapModal({
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2 rounded-xl bg-black/40 border border-white/10">
-                    <div className="text-[10px] text-slate-400">Active Cases</div>
+                    <div className="text-[10px] text-slate-400">{t.activeCasesLabel}</div>
                     <div className="font-extrabold text-white font-mono text-sm">
-                      {activeHotspot.activeCases} animals infected
+                      {activeHotspot.activeCases} {currentLang === 'hi' ? 'पशु' : currentLang === 'mr' ? 'प्राणी' : 'animals'}
                     </div>
                   </div>
                   <div className="p-2 rounded-xl bg-black/40 border border-white/10">
-                    <div className="text-[10px] text-slate-400">Quarantine Ring</div>
+                    <div className="text-[10px] text-slate-400">{t.quarantineRing}</div>
                     <div className="font-extrabold text-amber-400 font-mono text-sm">
-                      {activeHotspot.quarantineRadiusKm} km Ring
+                      {activeHotspot.quarantineRadiusKm} km
                     </div>
                   </div>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/30 text-xs text-slate-200">
-                  <div className="font-bold text-amber-300 mb-1">Preventative Action:</div>
+                  <div className="font-bold text-amber-300 mb-1">{t.preventativeActionLabel}</div>
                   <p className="leading-relaxed text-slate-300">
-                    {activeHotspot.preventiveAction}
+                    {currentLang === 'mr' ? activeHotspot.preventiveActionMarathi : activeHotspot.preventiveAction}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="text-xs text-slate-400 text-center py-10">
-                Click on any hotspot on the map for details.
+                {t.clickHotspot}
               </div>
             )}
 
             <div className="pt-2 border-t border-white/10 text-[11px] text-slate-400 flex items-center space-x-1.5">
               <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span>Live Panchayat Telemetry Feed Active</span>
+              <span>{t.telemetryActive}</span>
             </div>
           </div>
         </div>

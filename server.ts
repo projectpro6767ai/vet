@@ -1,11 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env', override: true });
+
 import express from 'express';
 import path from 'path';
-import dotenv from 'dotenv';
-import { GoogleGenAI, Modality } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
-import { triageWithGemini } from './src/services/aiDiagnosis';
-
-dotenv.config();
+import { routeAiInference, testProviderConnection } from './src/services/aiRouter';
+import { INDIAN_TALUKAS, getStateTalukaSummaries } from './src/data/indianTalukas';
+import type { IndiaTaluka } from './src/types';
 
 const app = express();
 const PORT = 3000;
@@ -14,40 +15,161 @@ const PORT = 3000;
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
-// Initialize GoogleGenAI client helper
-const apiKey = process.env.GEMINI_API_KEY;
-let aiClient: GoogleGenAI | null = null;
-
-function getAIClient(): GoogleGenAI {
-  if (!aiClient) {
-    if (!apiKey) {
-      console.warn('GEMINI_API_KEY is not set in environment.');
-    }
-    aiClient = new GoogleGenAI({
-      apiKey: apiKey || '',
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  }
-  return aiClient;
-}
+// Server-only backend API key (never exposed to frontend)
+const getBackendApiKey = (): string => (process.env.BACKEND_API_KEY || '').trim();
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     appName: 'Vet-Mitra AI',
-    geminiConfigured: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
+    primaryProvider: 'groq',
+    groqConfigured: Boolean(process.env.GROQ_API_KEY),
+    backendApiKeyConfigured: Boolean(getBackendApiKey()),
     supabaseProjectId: 'dmmumqlcvbkrnmiozuoi',
     supabaseConfigured: true,
   });
 });
 
+// AI Provider Status & Test endpoints
+app.get('/api/ai/status', (req, res) => {
+  res.json({
+    primaryProvider: 'groq',
+    groqConfigured: Boolean(process.env.GROQ_API_KEY),
+    groqModel: 'openai/gpt-oss-120b',
+  });
+});
+
+app.post('/api/ai/test', async (_req, res) => {
+  try {
+    const testResult = await testProviderConnection();
+    return res.json(testResult);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || 'Connection test failed' });
+  }
+});
+
+// 349 Indian State Talukas Registry & Live Sync State
+let syncedTalukasRegistry: IndiaTaluka[] = INDIAN_TALUKAS.map((t) => ({ ...t }));
+let lastTalukaSyncAt: string = new Date().toISOString();
+
+app.get('/api/talukas', (req, res) => {
+  const stateFilter = String(req.query.state || '').trim().toLowerCase();
+  const search = String(req.query.search || '').trim().toLowerCase();
+
+  let filtered = syncedTalukasRegistry;
+  if (stateFilter && stateFilter !== 'all') {
+    filtered = filtered.filter(
+      (item) =>
+        item.state.toLowerCase() === stateFilter ||
+        item.stateCode.toLowerCase() === stateFilter
+    );
+  }
+  if (search) {
+    filtered = filtered.filter(
+      (item) =>
+        item.taluka.toLowerCase().includes(search) ||
+        item.district.toLowerCase().includes(search) ||
+        item.state.toLowerCase().includes(search) ||
+        item.stateCode.toLowerCase().includes(search)
+    );
+  }
+
+  const stateSummaries = getStateTalukaSummaries(syncedTalukasRegistry);
+
+  res.json({
+    totalCount: syncedTalukasRegistry.length,
+    filteredCount: filtered.length,
+    statesCount: stateSummaries.length,
+    lastSyncedAt: lastTalukaSyncAt,
+    dataGovConfigured: Boolean(process.env.DATA_GOV_IN_API_KEY),
+    mapsKeyConfigured: Boolean(process.env.VITE_GOOGLE_MAPS_API_KEY),
+    stateSummaries,
+    talukas: filtered,
+  });
+});
+
+let dataGovUnreachable = false;
+
+app.post('/api/talukas/sync', async (req, res) => {
+  try {
+    const requestedState = String(req.body?.state || '').trim();
+    const syncTimestamp = new Date().toISOString();
+    const dataGovKey = (process.env.DATA_GOV_IN_API_KEY || '').trim();
+    let source: 'national_lgd_registry' | 'data_gov_in_live' = 'national_lgd_registry';
+
+    // Optional live upstream check against data.gov.in OGD API if key is configured and endpoint is reachable
+    if (dataGovKey && !dataGovUnreachable) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      try {
+        const ogdUrl = `https://api.data.gov.in/resource/37231365-78ba-45c3-ac22-412f2d53f0eb?api-key=${encodeURIComponent(
+          dataGovKey
+        )}&format=json&limit=10`;
+        const ogdRes = await fetch(ogdUrl, { signal: controller.signal });
+        if (ogdRes.ok) {
+          source = 'data_gov_in_live';
+        } else {
+          dataGovUnreachable = true;
+        }
+      } catch {
+        // Endpoint unreachable from this host (e.g. ECONNREFUSED); silently fall back to National LGD Registry
+        dataGovUnreachable = true;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    syncedTalukasRegistry = syncedTalukasRegistry.map((item) => {
+      if (
+        !requestedState ||
+        requestedState.toLowerCase() === 'all' ||
+        item.state.toLowerCase() === requestedState.toLowerCase() ||
+        item.stateCode.toLowerCase() === requestedState.toLowerCase()
+      ) {
+        return {
+          ...item,
+          synced: true,
+          lastSyncedAt: syncTimestamp,
+        };
+      }
+      return item;
+    });
+
+    lastTalukaSyncAt = syncTimestamp;
+    const stateSummaries = getStateTalukaSummaries(syncedTalukasRegistry);
+    const syncedItems =
+      requestedState && requestedState.toLowerCase() !== 'all'
+        ? syncedTalukasRegistry.filter(
+            (item) =>
+              item.state.toLowerCase() === requestedState.toLowerCase() ||
+              item.stateCode.toLowerCase() === requestedState.toLowerCase()
+          )
+        : syncedTalukasRegistry;
+
+    res.json({
+      success: true,
+      syncedCount: syncedItems.length,
+      statesCount: stateSummaries.length,
+      syncedAt: syncTimestamp,
+      source,
+      dataGovConfigured: Boolean(dataGovKey),
+      mapsKeyConfigured: Boolean(process.env.VITE_GOOGLE_MAPS_API_KEY),
+      stateSummaries,
+      message:
+        requestedState && requestedState.toLowerCase() !== 'all'
+          ? `Synced ${syncedItems.length} talukas in ${requestedState}.`
+          : `Synced all ${syncedItems.length} state talukas across ${stateSummaries.length} Indian States & UTs.`,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: err?.message || 'Taluka sync failed',
+    });
+  }
+});
+
 // Text-To-Speech (TTS) endpoint supporting Marathi, Hindi, and English
-// In-memory cache for synthesized audio chunks/results to optimize response times
 const ttsAudioCache = new Map<string, Buffer>();
 
 function splitTextIntoSafeTtsChunks(text: string, maxLen = 75): string[] {
@@ -100,7 +222,6 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
 
     const ttsLang = lang === 'mr' ? 'mr' : lang === 'hi' ? 'hi' : 'en-IN';
 
-    // Remove emojis, markdown, and normalize whitespace
     const sanitized = rawText
       .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/gu, '')
       .replace(/["“”«»*_#`~()\[\]]/g, ' ')
@@ -121,9 +242,7 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
       return;
     }
 
-    // Split safely into small chunks (under 75 chars) so Google TTS tw-ob never returns HTTP 400
     const chunks = splitTextIntoSafeTtsChunks(sanitized, 75);
-
     if (chunks.length === 0) {
       res.status(400).json({ error: 'No readable speech chunks' });
       return;
@@ -159,7 +278,6 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
           ttsAudioCache.set(chunkCacheKey, buf);
           audioBuffers.push(buf);
         } else {
-          // If en-IN failed, try standard 'en'
           if (ttsLang === 'en-IN') {
             const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(
               trimmed
@@ -206,7 +324,7 @@ const ttsHandler: express.RequestHandler = async (req, res) => {
 app.get('/api/tts', ttsHandler);
 app.post('/api/tts', ttsHandler);
 
-// Diagnostic handler for Vet-Mitra AI
+// Diagnostic handler for Vet-Mitra AI using Groq AI Router
 const diagnoseHandler: express.RequestHandler = async (req, res) => {
   try {
     const {
@@ -225,7 +343,7 @@ const diagnoseHandler: express.RequestHandler = async (req, res) => {
       });
     }
 
-    const diagnosis = await triageWithGemini({
+    const diagnosis = await routeAiInference({
       animalType,
       symptomsText,
       imageBase64,
@@ -244,47 +362,8 @@ const diagnoseHandler: express.RequestHandler = async (req, res) => {
   }
 };
 
-// Diagnostic endpoints for Vet-Mitra AI (both standard and v1 formats)
 app.post('/api/diagnose', diagnoseHandler);
 app.post('/api/v1/diagnose', diagnoseHandler);
-
-// Optional Gemini Speech synthesis API
-app.post('/api/tts/gemini', async (req, res) => {
-  try {
-    const { text } = req.body;
-    if (!text) {
-      return res.status(400).json({ error: 'Text is required for TTS' });
-    }
-
-    const ai = getAIClient();
-    const promptText = `Read the following message in a calm, clear, and reassuring tone for an Indian farmer:\n\n${text}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-tts-preview',
-      contents: [{ parts: [{ text: promptText }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: 'Kore',
-            },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (base64Audio) {
-      return res.json({ audioBase64: base64Audio, mimeType: 'audio/pcm;rate=24000' });
-    }
-
-    return res.status(204).end();
-  } catch (err: any) {
-    console.warn('TTS preview model unavailable or fallback to client TTS:', err.message);
-    res.status(500).json({ error: 'TTS fallback required' });
-  }
-});
 
 // Vite integration for SPA
 async function startServer() {

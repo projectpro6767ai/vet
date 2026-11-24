@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { SupportedLanguage, FodderQualityReport } from '../types';
 import { evaluateFodderQuality } from '../data/ecosystemData';
+import { UI_STRINGS } from '../data/translations';
 
 interface FodderMoldScannerModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function FodderMoldScannerModal({
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [report, setReport] = useState<FodderQualityReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const t = UI_STRINGS[currentLang];
 
   if (!isOpen) return null;
 
@@ -81,22 +83,14 @@ export function FodderMoldScannerModal({
             <div>
               <h3 className="font-extrabold text-lg text-white flex items-center space-x-2 font-['Outfit']">
                 <span>
-                  {currentLang === 'hi'
-                    ? 'चारा गुणवत्ता व फफूंद (मोल्ड) डिटेक्टर'
-                    : currentLang === 'mr'
-                    ? 'चारा गुणवत्ता व बुरशी (मोल्ड) तपासणी'
-                    : 'Fodder Quality & Mold AI Inspector'}
+                  {t.fodderTitle}
                 </span>
                 <span className="text-[10px] font-mono uppercase bg-emerald-900/90 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                  Aflatoxin Guard
+                  {t.aflatoxinGuard}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                {currentLang === 'hi'
-                  ? 'मुरघास, कडबा या दाने में एफ्लाटॉक्सिन व बुरशी की रोकथाम'
-                  : currentLang === 'mr'
-                  ? 'मुरघास, कडबा व पशूखाद्यातील बुरशी व विषारी टॉक्सिन तपासणी'
-                  : 'Detect Aspergillus mycotoxins, silage rot, and dangerous feed spoilage'}
+                {t.fodderSub}
               </p>
             </div>
           </div>
@@ -113,7 +107,7 @@ export function FodderMoldScannerModal({
           {/* 1. Quick Presets for Demo / Judges */}
           <div>
             <label className="text-xs font-bold text-slate-300 mb-2 block flex items-center justify-between">
-              <span>{currentLang === 'hi' ? 'नमूना चारा प्रकार चुनें:' : currentLang === 'mr' ? 'चाऱ्याचा प्रकार किंवा नमुना निवडा:' : 'Select Sample Fodder Type:'}</span>
+              <span>{t.selectFodderType}</span>
               <span className="text-[11px] text-emerald-400 font-mono">1-Tap Live Test</span>
             </label>
 
@@ -123,34 +117,34 @@ export function FodderMoldScannerModal({
                 className="p-2.5 rounded-xl text-left bg-red-950/30 hover:bg-red-950/60 border border-red-500/40 text-xs transition cursor-pointer"
               >
                 <div className="flex items-center justify-between text-red-400 font-bold mb-1">
-                  <span>मुरघास (सायलेज)</span>
+                  <span>{currentLang === 'mr' ? 'मुरघास' : currentLang === 'hi' ? 'मुरघास' : 'Silage'}</span>
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
                 </div>
-                <p className="text-[10px] text-slate-400">White mold on edges</p>
+                <p className="text-[10px] text-slate-400">{t.whiteMold}</p>
               </button>
 
               <button
                 onClick={() => handlePresetSample('kadba straw', true)}
                 className="p-2.5 rounded-xl text-left bg-amber-950/30 hover:bg-amber-950/60 border border-amber-500/40 text-xs transition cursor-pointer"
               >
-                <div className="text-amber-400 font-bold mb-1">साठवलेला कडबा</div>
-                <p className="text-[10px] text-slate-400">Damp musty smell</p>
+                <div className="text-amber-400 font-bold mb-1">{currentLang === 'mr' ? 'कडबा' : currentLang === 'hi' ? 'कडबा' : 'Kadba'}</div>
+                <p className="text-[10px] text-slate-400">{t.mustySmell}</p>
               </button>
 
               <button
                 onClick={() => handlePresetSample('concentrate feed pellet', true)}
                 className="p-2.5 rounded-xl text-left bg-orange-950/30 hover:bg-orange-950/60 border border-orange-500/40 text-xs transition cursor-pointer"
               >
-                <div className="text-orange-400 font-bold mb-1">पशूखाद्य गोळी पेंड</div>
-                <p className="text-[10px] text-slate-400">Discolored clumps</p>
+                <div className="text-orange-400 font-bold mb-1">{currentLang === 'mr' ? 'पशूखाद्य' : currentLang === 'hi' ? 'पशूखाद्य' : 'Feed'}</div>
+                <p className="text-[10px] text-slate-400">{t.discoloredClumps}</p>
               </button>
 
               <button
                 onClick={() => handlePresetSample('fresh green napier', false)}
                 className="p-2.5 rounded-xl text-left bg-emerald-950/30 hover:bg-emerald-950/60 border border-emerald-500/40 text-xs transition cursor-pointer"
               >
-                <div className="text-emerald-400 font-bold mb-1">हिरवा नेपियर चारा</div>
-                <p className="text-[10px] text-slate-400">100% Fresh & Safe</p>
+                <div className="text-emerald-400 font-bold mb-1">{currentLang === 'mr' ? 'नेपियर' : currentLang === 'hi' ? 'नेपियर' : 'Napier'}</div>
+                <p className="text-[10px] text-slate-400">100% {t.safeFeed}</p>
               </button>
             </div>
           </div>
@@ -176,17 +170,17 @@ export function FodderMoldScannerModal({
               ) : (
                 <>
                   <Wheat className="w-8 h-8 text-emerald-400 mb-1 opacity-70" />
-                  <span className="text-[11px] text-slate-400">No Image Yet</span>
+                  <span className="text-[11px] text-slate-400">{t.noImageYet}</span>
                 </>
               )}
             </div>
 
             <div className="flex-1 space-y-2.5 w-full">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                {currentLang === 'hi' ? 'चाऱ्याचे थेट छायाचित्र अपलोड करा' : currentLang === 'mr' ? 'चाऱ्याचा प्रत्यक्ष फोटो अपलोड करा' : 'Photograph Fodder / Grain Sample'}
+                {t.photographFodder}
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Hold camera 15 cm from silage layers or grain pile. Focus on discolored white/black spots, mold crust, or high moisture clumps.
+                {t.cameraInstructions}
               </p>
               <div className="flex items-center space-x-2">
                 <button
@@ -194,7 +188,7 @@ export function FodderMoldScannerModal({
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black text-xs font-extrabold flex items-center space-x-1.5 transition cursor-pointer shadow-md"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>{currentLang === 'hi' ? 'फोटो अपलोड' : currentLang === 'mr' ? 'फोटो अपलोड' : 'Upload Fodder'}</span>
+                  <span>{t.uploadFodder}</span>
                 </button>
                 <button
                   onClick={() => triggerScan(selectedSampleType, 'mold')}
@@ -202,7 +196,7 @@ export function FodderMoldScannerModal({
                   className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer"
                 >
                   <RotateCcw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-                  <span>{isScanning ? 'Scanning...' : 'Re-Analyze'}</span>
+                  <span>{isScanning ? t.scanning : t.reAnalyze}</span>
                 </button>
               </div>
             </div>
@@ -227,7 +221,7 @@ export function FodderMoldScannerModal({
                       <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                     )}
                     <span className="font-extrabold text-sm text-white">
-                      {report.sampleTypeMarathi} • {report.sampleType}
+                      {currentLang === 'mr' ? report.sampleTypeMarathi : report.sampleType}
                     </span>
                   </div>
                   <span
@@ -237,29 +231,29 @@ export function FodderMoldScannerModal({
                         : 'bg-emerald-600 text-black'
                     }`}
                   >
-                    {report.aflatoxinRiskLevel === 'CRITICAL_TOXIC' ? '⚠️ TOXIC MOLD' : '🟢 SAFE FEED'}
+                    {report.aflatoxinRiskLevel === 'CRITICAL_TOXIC' ? t.toxicMold : t.safeFeed}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 my-3">
                   <div className="p-2.5 rounded-xl bg-black/40 border border-white/10">
-                    <span className="text-[10px] text-slate-400 block uppercase">Fodder Safety Score</span>
+                    <span className="text-[10px] text-slate-400 block uppercase">{t.fodderSafetyScore}</span>
                     <span className="text-xl font-black font-mono text-white">
                       {report.safetyScore}
                       <span className="text-xs text-slate-400">/100</span>
                     </span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-black/40 border border-white/10">
-                    <span className="text-[10px] text-slate-400 block uppercase">Estimated Aflatoxin</span>
+                    <span className="text-[10px] text-slate-400 block uppercase">{t.estimatedAflatoxin}</span>
                     <span className="text-xl font-black font-mono text-white">
-                      {report.estimatedPpb} <span className="text-xs text-slate-400">ppb</span>
+                      {report.estimatedPadded || report.estimatedPpb} <span className="text-xs text-slate-400">ppb</span>
                     </span>
-                    <span className="text-[9px] text-amber-300 block">NDDB Max: 20 ppb</span>
+                    <span className="text-[9px] text-amber-300 block">{t.nddbMax}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 col-span-2 sm:col-span-1">
-                    <span className="text-[10px] text-slate-400 block uppercase">Mold Webbing</span>
+                    <span className="text-[10px] text-slate-400 block uppercase">{t.moldWebbing}</span>
                     <span className="text-base font-bold text-white">
-                      {report.moldDetected ? 'Detected (Active)' : 'None (Zero Hyphae)'}
+                      {report.moldDetected ? t.detected : t.none}
                     </span>
                   </div>
                 </div>
@@ -273,7 +267,7 @@ export function FodderMoldScannerModal({
               <div className="p-4 rounded-2xl bg-black/30 border border-white/10 space-y-2">
                 <h5 className="text-xs font-extrabold text-white flex items-center space-x-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Visual Spoilage Indicators:</span>
+                  <span>{t.visualSpoilage}</span>
                 </h5>
                 <ul className="space-y-1 text-xs text-slate-300">
                   {report.visualSpoilageSigns.map((sign, idx) => (
@@ -289,7 +283,7 @@ export function FodderMoldScannerModal({
               <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
                 <h5 className="text-xs font-extrabold text-emerald-300 flex items-center space-x-1.5">
                   <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Immediate Practical Farm Treatment / Detoxification:</span>
+                  <span>{t.immediateTreatment}</span>
                 </h5>
                 <div className="space-y-2 text-xs text-slate-300">
                   {report.detoxificationSteps.map((step, idx) => (
@@ -309,7 +303,7 @@ export function FodderMoldScannerModal({
         {/* Footer Actions */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/10 bg-black/50">
           <span className="text-[11px] text-slate-400">
-            Complies with Indian Fodder & Feed Safety Regulations (BIS 2052)
+            BIS 2052 Feed Compliance
           </span>
           <div className="flex items-center space-x-2">
             {report && onApplyFodderReport && (
@@ -320,14 +314,14 @@ export function FodderMoldScannerModal({
                 }}
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-xs transition cursor-pointer shadow-md"
               >
-                Send to Main Triage
+                {t.sendToTriage}
               </button>
             )}
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition cursor-pointer"
             >
-              Close
+              {t.close}
             </button>
           </div>
         </div>

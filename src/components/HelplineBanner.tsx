@@ -1,5 +1,6 @@
 import { Phone, HeartPulse, Info } from 'lucide-react';
 import { SupportedLanguage } from '../types';
+import { UI_STRINGS } from '../data/translations';
 
 interface HelplineBannerProps {
   currentLang: SupportedLanguage;
@@ -7,6 +8,7 @@ interface HelplineBannerProps {
 }
 
 export function HelplineBanner({ currentLang, onOpenHelpline }: HelplineBannerProps) {
+  const t = UI_STRINGS[currentLang];
   return (
     <div className="bg-gradient-to-r from-red-950/50 via-emerald-950/30 to-[#0C0E0B] backdrop-blur-md text-slate-200 border-y border-white/10 px-4 py-2.5 sm:py-3 text-xs sm:text-sm">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -16,18 +18,10 @@ export function HelplineBanner({ currentLang, onOpenHelpline }: HelplineBannerPr
           </div>
           <div>
             <span className="font-bold text-amber-300">
-              {currentLang === 'hi'
-                ? 'राष्ट्रीय पशु चिकित्सा आपातकालीन सेवा (24x7):'
-                : currentLang === 'mr'
-                ? 'राष्ट्रीय पशुवैद्यकीय आणीबाणी सेवा (२४x७):'
-                : 'National Veterinary Emergency Response (24x7):'}
+              {t.helplineBannerTitle}
             </span>{' '}
             <span className="text-slate-300">
-              {currentLang === 'hi'
-                ? 'गंभीर स्थिति में तुरंत 1962 डायल करें (मोबाइल वेटरनरी यूनिट / एम्बुलेंस)।'
-                : currentLang === 'mr'
-                ? 'गंभीर स्थितीत त्वरित १९६२ वर संपर्क करा (फिरते पशुवैद्यकीय पथक).'
-                : 'Dial 1962 for on-field Mobile Veterinary Unit dispatch & ambulance.'}
+              {t.helplineBannerDesc}
             </span>
           </div>
         </div>
@@ -40,17 +34,17 @@ export function HelplineBanner({ currentLang, onOpenHelpline }: HelplineBannerPr
             >
               <Info className="w-3.5 h-3.5 text-slate-300" />
               <span>
-                {currentLang === 'hi' ? 'जानकारी' : currentLang === 'mr' ? 'माहिती' : 'Info Guide'}
+                {t.helplineBannerInfo}
               </span>
             </button>
           )}
           <a
             href="tel:1962"
-            className="inline-flex items-center space-x-2 px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full font-extrabold shadow-[0_0_15px_rgba(220,38,38,0.4)] transition active:scale-95 text-xs whitespace-nowrap cursor-pointer"
+            className="inline-flex items-center space-x-2 px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full font-extrabold shadow-[0_0_15_rgba(220,38,38,0.4)] transition active:scale-95 text-xs whitespace-nowrap cursor-pointer"
           >
             <Phone className="w-3.5 h-3.5" />
             <span className="font-mono tracking-wider">
-              {currentLang === 'hi' ? 'अभी 1962 पर कॉल करें' : currentLang === 'mr' ? 'आताच १९६२ ला कॉल करा' : 'CALL 1962 NOW'}
+              {t.helplineBannerCall}
             </span>
           </a>
         </div>

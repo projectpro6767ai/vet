@@ -1,7 +1,4 @@
-/**
- * Source: Google Maps Platform Code Assist
- */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   APIProvider,
   Map,
@@ -17,12 +14,12 @@ import {
   Phone,
   Loader2,
   Hospital,
-  AlertCircle,
   ExternalLink,
   ShieldAlert,
   Info,
 } from 'lucide-react';
 import { SupportedLanguage } from '../types';
+import { UI_STRINGS } from '../data/translations';
 
 interface NearestHospitalModalProps {
   isOpen: boolean;
@@ -109,13 +106,12 @@ const EMERGENCY_CLINICS = [
 function isValidGoogleMapsKey(key: string | undefined): boolean {
   if (!key) return false;
   const trimmed = key.trim();
-  // Valid Google Maps API keys begin with 'AIzaSy' and have a standard length of ~39 characters.
-  // Bogus or placeholder values like 'Pro', 'undefined', or short test strings are rejected.
   return trimmed.startsWith('AIzaSy') && trimmed.length >= 35;
 }
 
 export function NearestHospitalModal({ isOpen, onClose, currentLang }: NearestHospitalModalProps) {
   if (!isOpen) return null;
+  const t = UI_STRINGS[currentLang];
 
   const rawApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '').trim();
   const hasValidApiKey = isValidGoogleMapsKey(rawApiKey);
@@ -131,18 +127,10 @@ export function NearestHospitalModal({ isOpen, onClose, currentLang }: NearestHo
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-bold text-white font-['Outfit']">
-                {currentLang === 'hi'
-                  ? 'निकटतम पशु चिकित्सालय एवं आपातकालीन सहायता'
-                  : currentLang === 'mr'
-                  ? 'जवळचे पशुवैद्यकीय रुग्णालय व आणीबाणी सेवा'
-                  : 'Nearest Vet Hospital & Emergency Assistance'}
+                {t.hospitalTitle}
               </h3>
               <p className="text-xs text-slate-400">
-                {currentLang === 'hi'
-                  ? 'आपातकालीन मार्ग, संपर्क व 1962 एम्बुलेंस सेवा'
-                  : currentLang === 'mr'
-                  ? 'तातडीचा मार्ग, संपर्क व १९६२ रुग्णवाहिका सेवा'
-                  : 'Emergency route, direct contact & 1962 MVU dispatch'}
+                {t.hospitalSub}
               </p>
             </div>
           </div>
@@ -177,6 +165,7 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
   const map = useMap();
   const placesLib = useMapsLibrary('places');
   const geometryLib = useMapsLibrary('geometry');
+  const t = UI_STRINGS[currentLang];
 
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [nearestHospital, setNearestHospital] = useState<any | null>(null);
@@ -184,7 +173,6 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
   const [loading, setLoading] = useState(true);
   const [searchFailed, setSearchFailed] = useState(false);
 
-  // 1. Get Current Position
   useEffect(() => {
     if (!navigator.geolocation) {
       setUserLocation({ lat: 18.5204, lng: 73.8567 }); // Fallback to Pune
@@ -203,7 +191,6 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
     );
   }, []);
 
-  // 2. Find Nearest Hospital using modern Places API
   useEffect(() => {
     if (!map || !placesLib || !userLocation) return;
 
@@ -230,7 +217,7 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
           rankPreference: SearchNearbyRankPreference?.DISTANCE,
         };
 
-        // @ts-ignore - searchNearby is in Google Maps Places API (New)
+        // @ts-ignore
         const { places } = await Place.searchNearby(request);
 
         if (!isMounted) return;
@@ -242,7 +229,6 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
           if (firstPlace.location) {
             map.panTo(firstPlace.location);
 
-            // Compute distance using spherical geometry
             if (geometryLib) {
               const from = new google.maps.LatLng(userLocation.lat, userLocation.lng);
               const to = firstPlace.location;
@@ -320,11 +306,7 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
           <div className="bg-black/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 flex items-center space-x-3 text-white pointer-events-auto shadow-xl">
             <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
             <span className="text-xs sm:text-sm font-semibold">
-              {currentLang === 'hi'
-                ? 'निकटतम पशु चिकित्सालय खोजा जा रहा है...'
-                : currentLang === 'mr'
-                ? 'जवळचे पशु रुग्णालय शोधत आहे...'
-                : 'Locating nearest veterinary hospital...'}
+              {t.locatingHospital}
             </span>
           </div>
         )}
@@ -334,14 +316,14 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h4 className="text-white font-bold text-sm sm:text-base leading-tight">
-                  {nearestHospital.displayName || 'Veterinary Emergency Clinic'}
+                  {nearestHospital.displayName || t.vetEmergencyClinic}
                 </h4>
                 <p className="text-slate-400 text-xs mt-0.5 line-clamp-2">
                   {nearestHospital.shortFormattedAddress || nearestHospital.formattedAddress}
                 </p>
               </div>
               <div className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0">
-                NEAREST
+                {t.nearestBadge}
               </div>
             </div>
 
@@ -366,7 +348,7 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
                   className="flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition active:scale-95 shadow-lg"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  <span>Call Hospital</span>
+                  <span>{t.callHospital}</span>
                 </a>
               ) : (
                 <a
@@ -374,7 +356,7 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
                   className="flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition active:scale-95 shadow-lg"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  <span>Call 1962</span>
+                  <span>{t.callNow1962}</span>
                 </a>
               )}
 
@@ -387,7 +369,7 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
                 className="flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 font-bold text-xs transition active:scale-95 border border-white/10"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Open Maps</span>
+                <span>{t.openMaps}</span>
               </a>
             </div>
           </div>
@@ -397,7 +379,6 @@ function HospitalTracker({ currentLang }: { currentLang: SupportedLanguage }) {
   );
 }
 
-// Emergency Veterinary Directory & Dispatch Navigator
 function EmergencyDirectoryFallback({
   currentLang,
   isKeyMissingOrInvalid,
@@ -405,6 +386,7 @@ function EmergencyDirectoryFallback({
   currentLang: SupportedLanguage;
   isKeyMissingOrInvalid: boolean;
 }) {
+  const t = UI_STRINGS[currentLang];
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* 24x7 Emergency Callout Banner */}
@@ -416,22 +398,14 @@ function EmergencyDirectoryFallback({
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-2 py-0.5 rounded-md bg-red-500/30 text-red-300 font-mono text-[11px] font-extrabold uppercase tracking-wider border border-red-500/40">
-                24x7 Government Helpline
+                {t.govtHelplineBadge}
               </span>
             </div>
             <h4 className="text-base sm:text-lg font-black text-white mt-1 font-['Outfit']">
-              {currentLang === 'hi'
-                ? 'राष्ट्रीय पशु चिकित्सा आपातकालीन सेवा (डायल 1962)'
-                : currentLang === 'mr'
-                ? 'राष्ट्रीय पशुवैद्यकीय आणीबाणी सेवा (डायल १९६२)'
-                : 'National Veterinary Emergency Response (Dial 1962)'}
+              {t.emergencyResponseTitle}
             </h4>
             <p className="text-xs sm:text-sm text-slate-300 mt-0.5 max-w-xl leading-relaxed">
-              {currentLang === 'hi'
-                ? 'गंभीर स्थिति में तुरंत 1962 पर कॉल करें। आपके स्थान पर ऑन-फील्ड मोबाइल वेटरनरी यूनिट और एम्बुलेंस भेजी जाएगी।'
-                : currentLang === 'mr'
-                ? 'गंभीर परिस्थितीत त्वरित १९६२ वर कॉल करा. फिरते पशुवैद्यकीय पथक व रुग्णवाहिका थेट आपल्या शेतात पोहोचेल.'
-                : 'Immediate on-field dispatch of Mobile Veterinary Units (MVU) and veterinary doctors directly to your farm.'}
+              {t.emergencyResponseDesc}
             </p>
           </div>
         </div>
@@ -442,7 +416,7 @@ function EmergencyDirectoryFallback({
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black text-sm tracking-wide shadow-lg shadow-red-600/40 transition active:scale-95 cursor-pointer whitespace-nowrap"
           >
             <Phone className="w-4 h-4" />
-            <span>DIAL 1962 NOW</span>
+            <span>{t.dial1962Now}</span>
           </a>
           <a
             href="https://www.google.com/maps/search/?api=1&query=veterinary+hospital+near+me"
@@ -451,13 +425,7 @@ function EmergencyDirectoryFallback({
             className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/15 text-slate-200 rounded-xl font-bold text-xs border border-white/10 transition active:scale-95 cursor-pointer whitespace-nowrap"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span>
-              {currentLang === 'hi'
-                ? 'गूगल मैप्स पर खोजें'
-                : currentLang === 'mr'
-                ? 'गुगल मॅप्सवर शोधा'
-                : 'Search on Google Maps'}
-            </span>
+            <span>{t.searchOnGoogleMaps}</span>
           </a>
         </div>
       </div>
@@ -468,18 +436,10 @@ function EmergencyDirectoryFallback({
           <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="text-xs leading-relaxed space-y-1">
             <p className="font-bold text-amber-300">
-              {currentLang === 'hi'
-                ? 'लाइव इन-ऐप जीपीएस मैप सूचना'
-                : currentLang === 'mr'
-                ? 'थेट इन-अ‍ॅप जीपीएस नकाशा माहिती'
-                : 'Live In-App Interactive GPS Map Notice'}
+              {t.gpsMapNoticeTitle}
             </p>
             <p className="text-slate-300">
-              {currentLang === 'hi'
-                ? 'ऐप के भीतर लाइव जीपीएस मैप और स्वचालित दूरी गणना के लिए Google Cloud Console या Maps Demo Key से वैध VITE_GOOGLE_MAPS_API_KEY सेट करें। आपातकालीन सहायता के लिए नीचे दिए गए सत्यापित केंद्रों पर सीधे कॉल करें।'
-                : currentLang === 'mr'
-                ? 'अ‍ॅपमध्ये थेट जीपीएस नकाशासाठी गुगल क्लाउड कन्सोलवरून वैध VITE_GOOGLE_MAPS_API_KEY सेट करा. तातडीच्या मदतीसाठी खालील सत्यापित केंद्रांशी थेट संपर्क साधा.'
-                : 'To render the interactive live GPS satellite radar directly within the app, configure a valid VITE_GOOGLE_MAPS_API_KEY in project settings. All verified emergency hospital contacts & Google Maps quick-routes below are fully active.'}
+              {t.gpsMapNoticeDesc}
             </p>
           </div>
         </div>
@@ -489,18 +449,10 @@ function EmergencyDirectoryFallback({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
-            {currentLang === 'hi'
-              ? 'सत्यापित पशु चिकित्सालय एवं पॉलीक्लिनिक'
-              : currentLang === 'mr'
-              ? 'सत्यापित पशुवैद्यकीय रुग्णालये व दवाखाने'
-              : 'Verified Emergency Veterinary Polyclinics & Centers'}
+            {t.verifiedHospitalsTitle}
           </h4>
           <span className="text-xs text-slate-400 font-medium">
-            {currentLang === 'hi'
-              ? 'प्रत्यक्ष कॉल व नेविगेशन उपलब्ध'
-              : currentLang === 'mr'
-              ? 'थेट कॉल व नेव्हिगेशन उपलब्ध'
-              : 'Direct Call & Navigation'}
+            {t.directCallNav}
           </span>
         </div>
 
@@ -582,11 +534,7 @@ function EmergencyDirectoryFallback({
                   >
                     <Navigation className="w-3.5 h-3.5 text-emerald-400" />
                     <span>
-                      {currentLang === 'hi'
-                        ? 'दिशा-निर्देश'
-                        : currentLang === 'mr'
-                        ? 'दिशा-मार्ग'
-                        : 'Directions'}
+                      {t.directions}
                     </span>
                   </a>
                 </div>

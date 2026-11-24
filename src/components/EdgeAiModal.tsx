@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SupportedLanguage, VetDiagnosisResponse } from '../types';
 import { runOfflineEdgeInference } from '../utils/edgeInference';
+import { UI_STRINGS } from '../data/translations';
 
 interface EdgeAiModalProps {
   isOpen: boolean;
@@ -28,8 +29,9 @@ export function EdgeAiModal({
   currentLang,
   onApplyDiagnosis,
 }: EdgeAiModalProps) {
+  const t = UI_STRINGS[currentLang];
   const [testAnimal, setTestAnimal] = useState('Cow (गाय)');
-  const [testSymptoms, setTestSymptoms] = useState('अंगावर कडक गाठी आल्या आहेत आणि ताप १०४ आहे (Lumpy skin nodules with high fever)');
+  const [testSymptoms, setTestSymptoms] = useState(currentLang === 'mr' ? 'अंगावर कडक गाठी आल्या आहेत आणि ताप १०४ आहे' : currentLang === 'hi' ? 'पूरे शरीर पर गांठें हैं और 104 बुखार है' : 'Firm nodules all over body and 104 fever');
   const [isInferring, setIsInferring] = useState(false);
   const [edgeResult, setEdgeResult] = useState<ReturnType<typeof runOfflineEdgeInference> | null>(null);
 
@@ -37,7 +39,6 @@ export function EdgeAiModal({
 
   const handleRunEdgeTest = () => {
     setIsInferring(true);
-    // Slight tick to let UI render the processing state
     setTimeout(() => {
       const res = runOfflineEdgeInference(testAnimal, testSymptoms);
       setEdgeResult(res);
@@ -64,14 +65,14 @@ export function EdgeAiModal({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
-                  Offline-First Edge AI Engine
+                  {t.edgeAiTitle}
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-black uppercase">
                   TFLite INT8 / ONNX
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                On-device lightweight neural inference for deep rural taluka zones with zero mobile connectivity
+                {t.edgeAiSubtitle}
               </p>
             </div>
           </div>
@@ -88,39 +89,39 @@ export function EdgeAiModal({
           <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
             <div className="flex items-center space-x-1.5 text-xs text-slate-400">
               <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Model Runtime</span>
+              <span>{t.modelRuntime}</span>
             </div>
             <div className="text-sm font-bold text-white font-mono">TFLite WebWorker</div>
-            <div className="text-[10px] text-emerald-400">Zero Server Ping</div>
+            <div className="text-[10px] text-emerald-400">{t.zeroServerPing}</div>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
             <div className="flex items-center space-x-1.5 text-xs text-slate-400">
               <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Quantized Size</span>
+              <span>{t.quantizedSize}</span>
             </div>
             <div className="text-sm font-bold text-white font-mono">4.2 MB INT8</div>
-            <div className="text-[10px] text-slate-400">Cached in CacheStorage</div>
+            <div className="text-[10px] text-slate-400">{t.cachedInStorage}</div>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
             <div className="flex items-center space-x-1.5 text-xs text-slate-400">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Edge Latency</span>
+              <span>{t.edgeLatency}</span>
             </div>
             <div className="text-sm font-bold text-white font-mono">
               {edgeResult ? `${edgeResult.telemetry.latencyMs} ms` : '~15 ms'}
             </div>
-            <div className="text-[10px] text-emerald-400">Instant Local Execution</div>
+            <div className="text-[10px] text-emerald-400">{t.instantLocalExec}</div>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
             <div className="flex items-center space-x-1.5 text-xs text-slate-400">
               <WifiOff className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Internet State</span>
+              <span>{t.internetState}</span>
             </div>
-            <div className="text-sm font-bold text-emerald-300 font-mono">100% Offline</div>
-            <div className="text-[10px] text-slate-400">No Mobile Data Required</div>
+            <div className="text-sm font-bold text-emerald-300 font-mono">{t.edgeOfflineStatus}</div>
+            <div className="text-[10px] text-slate-400">{t.noDataRequired}</div>
           </div>
         </div>
 
@@ -129,30 +130,30 @@ export function EdgeAiModal({
           <div className="flex items-center justify-between">
             <div className="text-sm font-bold text-slate-200 flex items-center space-x-2">
               <Smartphone className="w-4 h-4 text-emerald-400" />
-              <span>Interactive Jury Demonstration Sandbox</span>
+              <span>{t.jurySandbox}</span>
             </div>
             <span className="text-[11px] font-mono text-slate-400 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10">
-              Device: Local CPU / Browser Engine
+              {t.deviceLocal}
             </span>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Target Animal:</label>
+              <label className="text-xs text-slate-400 block mb-1">{t.targetAnimal}</label>
               <select
                 value={testAnimal}
                 onChange={(e) => setTestAnimal(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/15 text-sm text-white focus:outline-none focus:border-emerald-500"
               >
-                <option value="Cow (गाय)">Cow / Dairy Cattle (गाय)</option>
-                <option value="Buffalo (म्हैस)">Buffalo (म्हैस)</option>
-                <option value="Goat (शेळी)">Goat (शेळी)</option>
-                <option value="Calf (वासरू)">Calf (लहान वासरू)</option>
+                <option value="Cow (गाय)">{t.edgeCow}</option>
+                <option value="Buffalo (म्हैस)">{t.edgeBuffalo}</option>
+                <option value="Goat (शेळी)">{t.edgeGoat}</option>
+                <option value="Calf (वासरू)">{t.edgeCalf}</option>
               </select>
             </div>
 
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Rural Symptoms Sample (Type or pick below):</label>
+              <label className="text-xs text-slate-400 block mb-1">{t.ruralSymptomsLabel}</label>
               <textarea
                 value={testSymptoms}
                 onChange={(e) => setTestSymptoms(e.target.value)}
@@ -164,24 +165,24 @@ export function EdgeAiModal({
             <div className="flex flex-wrap gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setTestSymptoms('अंगावर लंपीच्या गाठी आल्यात, तीव्र ताप आहे, लाळ गळते (LSD nodules)')}
+                onClick={() => setTestSymptoms(currentLang === 'mr' ? 'अंगावर लंपीच्या गाठी आल्यात, तीव्र ताप आहे, लाळ गळते' : currentLang === 'hi' ? 'शरीर पर लम्पी की गांठें हैं, तेज बुखार है, लार गिर रही है' : 'LSD nodules, high fever, salivation')}
                 className="px-2.5 py-1 rounded-lg bg-red-950/40 border border-red-500/30 text-red-300 text-xs hover:bg-red-900/60 transition"
               >
-                Preset: Lumpy Skin Disease (🔴 RED)
+                {t.edgePresetLsd}
               </button>
               <button
                 type="button"
-                onClick={() => setTestSymptoms('पोट भलतंच टम्म फुगलंय आणि जनावर चरफड करतंय (Rumen Bloat)')}
+                onClick={() => setTestSymptoms(currentLang === 'mr' ? 'पोट भलतंच टम्म फुगलंय आणि जनावर चरफड करतंय' : currentLang === 'hi' ? 'पेट फूला हुआ है और पशु बेचैन है' : 'Bloated stomach and restless animal')}
                 className="px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-300 text-xs hover:bg-amber-900/60 transition"
               >
-                Preset: Acute Bloat (🟡 YELLOW)
+                {t.edgePresetBloat}
               </button>
               <button
                 type="button"
-                onClick={() => setTestSymptoms('किरकोळ गोचीड आहेत आणि खात नाही (Minor Ticks & Dullness)')}
+                onClick={() => setTestSymptoms(currentLang === 'mr' ? 'किरकोळ गोचीड आहेत आणि खात नाही' : currentLang === 'hi' ? 'हल्के गोचीड हैं और चारा नहीं खा रहा' : 'Minor ticks and not eating')}
                 className="px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs hover:bg-emerald-900/60 transition"
               >
-                Preset: Mild Ticks / Indigestion (🟢 GREEN)
+                {t.edgePresetTicks}
               </button>
             </div>
 
@@ -191,7 +192,7 @@ export function EdgeAiModal({
               className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-sm transition shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-98 cursor-pointer disabled:opacity-50"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>{isInferring ? 'Executing On-Device INT8 Inference...' : 'Run Local Edge Inference (0% Data Used)'}</span>
+              <span>{isInferring ? t.executingInference : t.runEdgeInference}</span>
             </button>
           </div>
         </div>
@@ -203,7 +204,7 @@ export function EdgeAiModal({
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-xs font-mono font-bold text-emerald-300 uppercase">
-                  Edge Diagnostic Output • {edgeResult.telemetry.latencyMs}ms Latency
+                  {t.edgeOutput} • {edgeResult.telemetry.latencyMs}ms Latency
                 </span>
               </div>
               <span className="px-3 py-0.5 rounded-full bg-black/60 border border-white/20 text-xs font-mono font-bold text-white">
@@ -221,7 +222,7 @@ export function EdgeAiModal({
             </div>
 
             <div className="space-y-1.5 text-xs text-slate-200">
-              <div className="font-bold text-emerald-400">Immediate First Aid (NDDB Validated):</div>
+              <div className="font-bold text-emerald-400">{t.immediateFirstAid}</div>
               {edgeResult.diagnosis.first_aid_steps.map((step, idx) => (
                 <div key={idx} className="pl-2 border-l border-emerald-500/40 text-slate-300">
                   {step}
@@ -231,14 +232,14 @@ export function EdgeAiModal({
 
             <div className="pt-2 flex items-center justify-between border-t border-white/10">
               <div className="text-[11px] text-slate-400">
-                Local Medicine: <span className="text-white font-medium">{edgeResult.diagnosis.recommended_local_product}</span>
+                {t.localMedicine} <span className="text-white font-medium">{edgeResult.diagnosis.recommended_local_product}</span>
               </div>
               {onApplyDiagnosis && (
                 <button
                   onClick={handleUseInApp}
                   className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold text-xs transition cursor-pointer"
                 >
-                  Load into Main Triage Screen
+                  {t.loadIntoMain}
                 </button>
               )}
             </div>
@@ -249,7 +250,7 @@ export function EdgeAiModal({
         <div className="flex items-center space-x-2.5 text-xs text-slate-400 bg-black/40 p-3 rounded-xl border border-white/10">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>
-            <strong>Science Exhibition Proof:</strong> You can disconnect WiFi / turn on Airplane Mode during jury evaluation and this engine will continuously evaluate cases with sub-20ms latency.
+            {t.scienceProof}
           </span>
         </div>
       </div>

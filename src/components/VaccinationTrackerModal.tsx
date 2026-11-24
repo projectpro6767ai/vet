@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { SupportedLanguage, VaccinationDriveItem } from '../types';
 import { VACCINATION_DRIVES } from '../data/ecosystemData';
+import { UI_STRINGS } from '../data/translations';
 
 interface VaccinationTrackerModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export function VaccinationTrackerModal({
   const [farmerPhone, setFarmerPhone] = useState<string>('98220 12345');
   const [activeTab, setActiveTab] = useState<'CALENDAR' | 'SUBSIDIES'>('CALENDAR');
   const [showSmsToast, setShowSmsToast] = useState<boolean>(false);
+  const t = UI_STRINGS[currentLang];
 
   if (!isOpen) return null;
 
@@ -55,14 +57,14 @@ export function VaccinationTrackerModal({
             <div>
               <h3 className="font-extrabold text-lg text-white flex items-center space-x-2 font-['Outfit']">
                 <span>
-                  Government Vaccination Calendar & Subsidy Tracker
+                  {t.vaccinationTrackerTitle}
                 </span>
                 <span className="text-[10px] font-mono uppercase bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                  NADCP 100% Free
+                  {t.vaccinationFreeBadge}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Track mandatory state vaccination drives with automated SMS reminders
+                {t.vaccinationTrackerSub}
               </p>
             </div>
           </div>
@@ -86,7 +88,7 @@ export function VaccinationTrackerModal({
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
-              <span>Vaccination Drives</span>
+              <span>{t.upcomingDrives}</span>
             </button>
 
             <button
@@ -98,12 +100,12 @@ export function VaccinationTrackerModal({
               }`}
             >
               <Coins className="w-3.5 h-3.5" />
-              <span>Govt Subsidies & PKCC</span>
+              <span>{t.subsidiesLoans}</span>
             </button>
           </div>
 
           <div className="hidden sm:flex items-center space-x-2 text-xs text-slate-300">
-            <span className="font-mono text-emerald-400 text-[11px]">SMS Alert Phone:</span>
+            <span className="font-mono text-emerald-400 text-[11px]">{t.smsAlertPhone}</span>
             <input
               type="text"
               value={farmerPhone}
@@ -118,7 +120,7 @@ export function VaccinationTrackerModal({
             <div className="flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span>
-                Free SMS Reminder subscribed for +91 {farmerPhone}! You will get an alert 3 days before the camp.
+                {t.smsSubscribed}{farmerPhone}{t.willGetAlert}
               </span>
             </div>
           </div>
@@ -139,18 +141,18 @@ export function VaccinationTrackerModal({
                       <div className="flex items-center space-x-2">
                         {drive.isGovernmentFree && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40">
-                            100% Free Govt Drive
+                            {t.freeGovtDose}
                           </span>
                         )}
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono text-amber-300 bg-amber-950/60 border border-amber-500/30">
-                          {drive.daysRemaining === 2 ? 'Active Now' : `In ${drive.daysRemaining} Days`}
+                          {drive.daysRemaining === 2 ? t.activeNow : `${t.inDays}${drive.daysRemaining}${t.days}`}
                         </span>
                       </div>
                       <h4 className="text-sm font-extrabold text-white mt-1">
-                        {drive.diseaseName}
+                        {currentLang === 'mr' ? drive.diseaseMarathi : currentLang === 'hi' ? drive.diseaseHi : drive.diseaseName}
                       </h4>
                       <p className="text-xs text-slate-400">
-                        Vaccine: <strong className="text-slate-200">{drive.vaccineName}</strong> • {drive.frequency}
+                        {t.vaccineNameLabel}: <strong className="text-slate-200">{currentLang === 'mr' ? drive.vaccineNameMarathi : currentLang === 'hi' ? drive.vaccineNameHi : drive.vaccineName}</strong> • {currentLang === 'mr' ? drive.frequencyMarathi : currentLang === 'hi' ? drive.frequencyHi : drive.frequency}
                       </p>
                     </div>
 
@@ -163,28 +165,28 @@ export function VaccinationTrackerModal({
                       }`}
                     >
                       <Bell className="w-3.5 h-3.5" />
-                      <span>{isSubscribed ? 'SMS Subscribed ✓' : 'Remind by SMS'}</span>
+                      <span>{isSubscribed ? t.smsSubscribedBadge : t.remindBySms}</span>
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-2 border-t border-white/10 text-slate-300">
                     <div>
                       <span className="text-slate-500 block text-[10px] uppercase font-mono">
-                        Target Animals:
+                        {t.targetAnimalsLabel}:
                       </span>
-                      <span>{drive.targetAnimals}</span>
+                      <span>{currentLang === 'mr' ? drive.targetAnimalsMarathi : currentLang === 'hi' ? drive.targetAnimalsHi : drive.targetAnimals}</span>
                     </div>
                     <div>
                       <span className="text-slate-500 block text-[10px] uppercase font-mono">
-                        Camp Location:
+                        {t.campLocationLabel}:
                       </span>
-                      <span>{drive.talukaCampLocation}</span>
+                      <span>{currentLang === 'mr' ? drive.talukaCampLocationMarathi : currentLang === 'hi' ? drive.talukaCampLocationHi : drive.talukaCampLocation}</span>
                     </div>
                   </div>
 
                   <div className="p-2 rounded-lg bg-black/40 border border-white/5 text-[11px] text-amber-300/90 flex items-start space-x-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
-                    <span><strong>Precaution:</strong> {drive.precautions}</span>
+                    <span><strong>{t.precautionsLabel}:</strong> {currentLang === 'mr' ? drive.precautionsMarathi : currentLang === 'hi' ? drive.precautionsHi : drive.precautions}</span>
                   </div>
                 </div>
               );
@@ -195,54 +197,54 @@ export function VaccinationTrackerModal({
               <div className="p-4 rounded-2xl bg-[#121914] border border-emerald-500/40 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40">
-                    Interest Subvention
+                    {t.interestSubvention}
                   </span>
                   <span className="text-xs font-mono font-bold text-emerald-400">
-                    Net 4% Interest
+                    {t.net4Interest}
                   </span>
                 </div>
                 <h4 className="text-sm font-extrabold text-white">
-                  Pashu Kisan Credit Card (PKCC)
+                  {t.pkccTitle}
                 </h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Provides collateral-free working capital loan up to ₹1,60,000 (and up to ₹2,00,000 with simple hypothecation) for fodder, medicines, and breeding maintenance. Interest rate reduced from 7% to 4% upon timely repayment.
+                  {t.pkccDesc}
                 </p>
                 <div className="text-[11px] text-emerald-300 font-mono pt-1">
-                  Required: Aadhaar Card, 7/12 land extract, and Veterinary Vaccination Certificate.
+                  {t.pkccRequired}
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#121914] border border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-950 text-blue-300 border border-blue-500/40">
-                    Capital Subsidy
+                    {t.capitalSubsidy}
                   </span>
                   <span className="text-xs font-mono font-bold text-blue-400">
-                    50% Govt Grant
+                    {t.govtGrant50}
                   </span>
                 </div>
                 <h4 className="text-sm font-extrabold text-white">
-                  National Livestock Mission (NLM) Fodder & Breed Hub
+                  {t.nlmTitle}
                 </h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  50% capital subsidy (up to ₹50 Lakh) for establishing automated silage baling plants, fodder seed production farms, and certified goat/sheep breeding centers.
+                  {t.nlmDesc}
                 </p>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#121914] border border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-950 text-purple-300 border border-purple-500/40">
-                    Maharashtra State Scheme
+                    {t.stateScheme}
                   </span>
                   <span className="text-xs font-mono font-bold text-purple-400">
-                    75% Subsidy
+                    {t.subsidy75}
                   </span>
                 </div>
                 <h4 className="text-sm font-extrabold text-white">
-                  Punyashlok Ahilyabai Holkar Goat & Sheep Development Scheme
+                  {t.goatSchemeTitle}
                 </h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  75% subsidy for 10+1 Osmanabadi / Sangamneri goat units for rural landless farmers, women self-help groups, and smallholders.
+                  {t.goatSchemeDesc}
                 </p>
               </div>
             </div>
@@ -252,13 +254,13 @@ export function VaccinationTrackerModal({
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/10 bg-black/50">
           <span className="text-[11px] text-slate-400">
-            Automated calendar synchronized with Commissionerate of Animal Husbandry, Pune
+            {t.officialIntegration}
           </span>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition cursor-pointer"
           >
-            Close
+            {t.close}
           </button>
         </div>
       </div>

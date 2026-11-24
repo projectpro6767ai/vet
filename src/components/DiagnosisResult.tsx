@@ -158,24 +158,31 @@ export function DiagnosisResult({
                 {diagnosis.animal_identified}
               </span>
 
+              {diagnosis.source === 'ai_router_groq' && (
+                <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Groq AI ({diagnosis.model_used || 'openai/gpt-oss-120b'})</span>
+                </span>
+              )}
+
               {diagnosis.source === 'gemini_ai' && (
                 <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Google Gemini AI ({diagnosis.model_used || 'gemini-3.8-flash'})</span>
+                  <span>{t.sourceGemini} ({diagnosis.model_used || 'gemini-3.8-flash'})</span>
                 </span>
               )}
 
               {diagnosis.source === 'clinical_rule_engine' && (
                 <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-semibold">
                   <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  <span>Veterinary Clinical Engine</span>
+                  <span>{t.sourceClinical}</span>
                 </span>
               )}
 
               {diagnosis.source === 'offline_edge' && (
                 <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold">
                   <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span>On-Device TFLite Edge</span>
+                  <span>{t.sourceEdge}</span>
                 </span>
               )}
             </div>
@@ -197,11 +204,11 @@ export function DiagnosisResult({
                   <button
                     onClick={onOpenTrackHospital}
                     className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-red-600/90 hover:bg-red-500 border border-white/20 text-white font-black text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] transition active:scale-95 cursor-pointer"
-                    title={currentLang === 'mr' ? 'जवळचे पशुवैद्यकीय रुग्णालय शोधा' : currentLang === 'hi' ? 'निकटतम पशु चिकित्सालय खोजें' : 'Track Nearest Veterinary Hospital'}
+                    title={t.findHospital}
                   >
                     <Navigation className="w-4 h-4" />
                     <span>
-                      {currentLang === 'mr' ? 'रुग्णालय' : currentLang === 'hi' ? 'अस्पताल' : 'Hospital'}
+                      {t.hospital}
                     </span>
                   </button>
                 )}
@@ -217,12 +224,12 @@ export function DiagnosisResult({
               {pdfDownloaded ? (
                 <>
                   <Check className="w-4 h-4 text-black" />
-                  <span>{t.pdfDownloaded || 'Saved!'}</span>
+                  <span>{t.pdfDownloaded}</span>
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4 text-black" />
-                  <span>{t.savePdf || 'Save as PDF'}</span>
+                  <span>{t.savePdf}</span>
                 </>
               )}
             </button>
@@ -235,7 +242,7 @@ export function DiagnosisResult({
                 title="Generate Official Clinical Paperwork with Doctor QR Code"
               >
                 <QrCode className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">{t.doctorQrDocket || 'Doctor QR Docket'}</span>
+                <span className="hidden sm:inline">{t.doctorQrDocket}</span>
               </button>
             )}
 
@@ -286,11 +293,7 @@ export function DiagnosisResult({
               <div className="flex flex-col">
                 <span>{t.audioGuidanceTitle}</span>
                 <span className="text-[11px] font-normal text-slate-400">
-                  {currentLang === 'mr'
-                    ? 'अचूक उच्चारांसह मराठी, हिंदी व इंग्रजी आवाज'
-                    : currentLang === 'hi'
-                    ? 'सटीक उच्चारण के साथ मराठी, हिंदी व अंग्रेजी आवाज'
-                    : 'Clear natural spoken guidance in Marathi, Hindi & English'}
+                    {t.audioBannerSub}
                 </span>
               </div>
             </h3>
@@ -310,7 +313,7 @@ export function DiagnosisResult({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {currentLang === 'mr' ? 'संपूर्ण मार्गदर्शन' : currentLang === 'hi' ? 'पूरा मार्गदर्शन' : 'Full Guide'}
+                {t.fullGuide}
               </button>
               <button
                 type="button"
@@ -325,7 +328,7 @@ export function DiagnosisResult({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {currentLang === 'mr' ? 'थोडक्यात' : currentLang === 'hi' ? 'संक्षिप्त' : 'Summary'}
+                {t.summary}
               </button>
             </div>
           </div>
@@ -340,11 +343,11 @@ export function DiagnosisResult({
                   <span className="w-1 h-2 bg-emerald-400 rounded-full animate-bounce"></span>
                 </div>
                 <span className="font-semibold">
-                  {activeVoiceLang === 'mr'
-                    ? 'मराठीत ऑडिओ सुरू आहे...'
-                    : activeVoiceLang === 'hi'
-                    ? 'हिंदी में ऑडियो शुरू है...'
-                    : 'Playing English audio advice...'}
+                    {activeVoiceLang === 'mr'
+                      ? t.audioPlayingMarathi
+                      : activeVoiceLang === 'hi'
+                      ? t.audioPlayingHindi
+                      : t.audioPlayingEnglish}
                 </span>
               </div>
               <button
@@ -356,7 +359,7 @@ export function DiagnosisResult({
                 className="flex items-center space-x-1 px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition shadow cursor-pointer"
               >
                 <VolumeX className="w-3.5 h-3.5" />
-                <span>{currentLang === 'mr' ? 'थांबवा' : currentLang === 'hi' ? 'रोकें' : 'Stop Audio'}</span>
+                <span>{t.stopAudio}</span>
               </button>
             </div>
           )}
@@ -374,7 +377,7 @@ export function DiagnosisResult({
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="font-bold text-xs text-emerald-400 flex items-center space-x-1.5">
                     <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'mr' ? 'bg-red-400 animate-ping' : 'bg-emerald-400'}`}></span>
-                    <span>ऑडिओ (मराठी)</span>
+                    <span>{t.marathiAudio}</span>
                   </span>
                   <button
                     type="button"
@@ -388,12 +391,12 @@ export function DiagnosisResult({
                     {activeVoiceLang === 'mr' ? (
                       <>
                         <VolumeX className="w-3.5 h-3.5" />
-                        <span>थांबवा</span>
+                        <span>{t.stop}</span>
                       </>
                     ) : (
                       <>
                         <Volume2 className="w-3.5 h-3.5" />
-                        <span>मराठीत ऐका</span>
+                        <span>{t.listenMarathi}</span>
                       </>
                     )}
                   </button>
@@ -403,8 +406,8 @@ export function DiagnosisResult({
                 </p>
               </div>
               <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>{voiceMode === 'full' ? 'संपूर्ण सूचना (Full)' : 'संक्षिप्त (Summary)'}</span>
-                <span className="text-emerald-400 font-mono">1962 मदतवाहिनी</span>
+                <span>{voiceMode === 'full' ? `${t.fullGuide}` : `${t.summary}`}</span>
+                <span className="text-emerald-400 font-mono">{currentLang === 'mr' ? '१९६२ मदतवाहिनी' : currentLang === 'hi' ? '1962 हेल्पलाइन' : '1962 Helpline'}</span>
               </div>
             </div>
 
@@ -420,7 +423,7 @@ export function DiagnosisResult({
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="font-bold text-xs text-amber-300 flex items-center space-x-1.5">
                     <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'hi' ? 'bg-red-400 animate-ping' : 'bg-amber-400'}`}></span>
-                    <span>ऑडियो (हिन्दी)</span>
+                    <span>{t.hindiAudio}</span>
                   </span>
                   <button
                     type="button"
@@ -434,12 +437,12 @@ export function DiagnosisResult({
                     {activeVoiceLang === 'hi' ? (
                       <>
                         <VolumeX className="w-3.5 h-3.5" />
-                        <span>रोकें</span>
+                        <span>{t.stop}</span>
                       </>
                     ) : (
                       <>
                         <Volume2 className="w-3.5 h-3.5" />
-                        <span>हिंदी में सुनें</span>
+                        <span>{t.listenHindi}</span>
                       </>
                     )}
                   </button>
@@ -449,8 +452,8 @@ export function DiagnosisResult({
                 </p>
               </div>
               <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>{voiceMode === 'full' ? 'पूर्ण मार्गदर्शन (Full)' : 'संक्षिप्त (Summary)'}</span>
-                <span className="text-amber-300 font-mono">1962 हेल्पलाइन</span>
+                <span>{voiceMode === 'full' ? `${t.fullGuide}` : `${t.summary}`}</span>
+                <span className="text-amber-300 font-mono">{currentLang === 'hi' ? '1962 हेल्पलाइन' : currentLang === 'mr' ? '१९६२ मदतवाहिनी' : '1962 Helpline'}</span>
               </div>
             </div>
 
@@ -466,7 +469,7 @@ export function DiagnosisResult({
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="font-bold text-xs text-sky-300 flex items-center space-x-1.5">
                     <span className={`w-2 h-2 rounded-full ${activeVoiceLang === 'en' ? 'bg-red-400 animate-ping' : 'bg-sky-400'}`}></span>
-                    <span>Audio (English)</span>
+                    <span>{t.englishAudio}</span>
                   </span>
                   <button
                     type="button"
@@ -480,12 +483,12 @@ export function DiagnosisResult({
                     {activeVoiceLang === 'en' ? (
                       <>
                         <VolumeX className="w-3.5 h-3.5" />
-                        <span>Stop</span>
+                        <span>{t.stop}</span>
                       </>
                     ) : (
                       <>
                         <Volume2 className="w-3.5 h-3.5" />
-                        <span>Listen in English</span>
+                        <span>{t.listen}</span>
                       </>
                     )}
                   </button>
@@ -495,7 +498,7 @@ export function DiagnosisResult({
                 </p>
               </div>
               <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-slate-400 flex items-center justify-between">
-                <span>{voiceMode === 'full' ? 'Full Step-by-Step' : 'Summary'}</span>
+                <span>{voiceMode === 'full' ? `${t.fullGuide}` : `${t.summary}`}</span>
                 <span className="text-sky-300 font-mono">1962 Helpline</span>
               </div>
             </div>
@@ -584,7 +587,7 @@ export function DiagnosisResult({
             >
               <Store className="w-3.5 h-3.5 text-emerald-400" />
               <span>
-                {t.findNearbyChemist || 'Find Nearby Chemist'}
+                {t.findNearbyChemist}
               </span>
             </button>
           )}
@@ -602,12 +605,12 @@ export function DiagnosisResult({
               {pdfDownloaded ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-black" />
-                  <span>{t.pdfDownloaded || 'PDF Saved'}</span>
+                  <span>{t.pdfDownloaded}</span>
                 </>
               ) : (
                 <>
                   <Download className="w-3.5 h-3.5 text-black" />
-                  <span>{t.savePdf || 'Save as PDF'}</span>
+                  <span>{t.savePdf}</span>
                 </>
               )}
             </button>
@@ -619,7 +622,7 @@ export function DiagnosisResult({
                 className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-[11px] sm:text-xs font-bold transition cursor-pointer shadow-sm active:scale-95 whitespace-nowrap"
               >
                 <QrCode className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t.doctorQrDocket || 'Doctor QR Docket'}</span>
+                <span>{t.doctorQrDocket}</span>
               </button>
             )}
 
@@ -630,7 +633,7 @@ export function DiagnosisResult({
                 className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-[11px] sm:text-xs font-bold transition cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <Scale className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t.remedyCalculator || 'Remedy'}</span>
+                <span>{t.remedy}</span>
               </button>
             )}
 
@@ -642,7 +645,7 @@ export function DiagnosisResult({
                 title="E-Pashuhaat AI Technicians & Insurance"
               >
                 <Award className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t.epashuhaat || 'Pashuhaat'}</span>
+                <span>{t.epashuhaat}</span>
               </button>
             )}
 
@@ -654,7 +657,7 @@ export function DiagnosisResult({
                 title="Vaccination Calendar & Subsidies"
               >
                 <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t.vaccines || 'Vaccines'}</span>
+                <span>{t.vaccines}</span>
               </button>
             )}
           </div>
@@ -663,7 +666,7 @@ export function DiagnosisResult({
             onClick={() => setShowRawJson(!showRawJson)}
             className="text-[10px] sm:text-xs font-mono text-slate-500 hover:text-slate-300 flex items-center space-x-1.5 cursor-pointer whitespace-nowrap"
           >
-            <span>{t.telemetryJson || 'Telemetry JSON'}</span>
+            <span>{t.telemetryJson}</span>
             {showRawJson ? (
               <ChevronUp className="w-3 h-3" />
             ) : (
@@ -677,11 +680,7 @@ export function DiagnosisResult({
           <div className="relative mt-3 rounded-2xl bg-black/80 text-emerald-400 p-5 font-mono text-xs overflow-x-auto border border-white/10 shadow-inner">
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 text-slate-400">
               <span className="text-[11px] font-mono font-bold">
-                {currentLang === 'mr'
-                  ? 'वेट-मित्र एआय स्ट्रक्चर्ड डेटा'
-                  : currentLang === 'hi'
-                  ? 'वेट-मित्र एआई संरचित डेटा'
-                  : 'Vet-Mitra AI Structured JSON Schema'}
+                {t.structuredDataTitle}
               </span>
               <button
                 onClick={handleCopyJson}
@@ -690,12 +689,12 @@ export function DiagnosisResult({
                 {copiedJson ? (
                   <>
                     <Check className="w-3 h-3 text-emerald-400" />
-                    <span>{t.copied || 'Copied'}</span>
+                    <span>{t.copied}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3 h-3" />
-                    <span>{t.copyJson || 'Copy JSON'}</span>
+                    <span>{t.copyJson}</span>
                   </>
                 )}
               </button>

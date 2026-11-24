@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { AYURVEDIC_RECIPES } from '../data/remedyData';
 import { SupportedLanguage } from '../types';
+import { UI_STRINGS } from '../data/translations';
 
 interface RemedyCalculatorModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function RemedyCalculatorModal({
 }: RemedyCalculatorModalProps) {
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>('remedy_bloat');
   const [bodyWeightKg, setBodyWeightKg] = useState<number>(380); // Standard Indian crossbred cow ~380kg
+  const t = UI_STRINGS[currentLang];
 
   if (!isOpen) return null;
 
@@ -46,14 +48,14 @@ export function RemedyCalculatorModal({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-xl sm:text-2xl font-black font-['Outfit'] text-white">
-                  Ayurvedic Remedy & Feed Calculator
+                  {t.remedyCalcTitle}
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-black uppercase">
                   NDDB / TANUVAS
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Low-Cost Home-Remedy Ratio & Crop Waste Calculator tailored to Animal Body Weight
+                {t.remedyCalcSub}
               </p>
             </div>
           </div>
@@ -68,11 +70,12 @@ export function RemedyCalculatorModal({
         {/* Condition Selector */}
         <div>
           <label className="text-xs text-slate-400 font-bold block mb-2">
-            Select Health Condition:
+            {t.selectCondition}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {AYURVEDIC_RECIPES.map((r) => {
               const isSelected = r.id === selectedRecipeId;
+              const name = currentLang === 'mr' ? r.conditionMarathi : currentLang === 'hi' ? (r.conditionNameHindi || r.conditionName) : r.conditionName;
               return (
                 <button
                   key={r.id}
@@ -83,7 +86,7 @@ export function RemedyCalculatorModal({
                       : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
                   }`}
                 >
-                  <div className="text-xs font-bold leading-tight">{r.conditionName}</div>
+                  <div className="text-xs font-bold leading-tight">{name}</div>
                 </button>
               );
             })}
@@ -94,7 +97,7 @@ export function RemedyCalculatorModal({
         <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-200">
-              Estimated Animal Body Weight:
+              {t.estimatedWeight}
             </span>
             <div className="text-lg font-black text-emerald-400 font-mono">
               {bodyWeightKg} kg <span className="text-xs text-slate-400">({Math.round(bodyWeightKg * 2.2)} lbs)</span>
@@ -112,36 +115,36 @@ export function RemedyCalculatorModal({
           />
 
           {/* Quick Presets */}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1 no-scrollbar">
             <button
               onClick={() => setBodyWeightKg(50)}
               className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-300 hover:text-white"
             >
-              Goat / Buck (50kg)
+              {t.goatBuck}
             </button>
             <button
               onClick={() => setBodyWeightKg(120)}
               className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-300 hover:text-white"
             >
-              Small Calf (120kg)
+              {t.smallCalf}
             </button>
             <button
               onClick={() => setBodyWeightKg(250)}
               className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-300 hover:text-white"
             >
-              Heifer (250kg)
+              {t.heifer}
             </button>
             <button
               onClick={() => setBodyWeightKg(380)}
               className="px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-xs text-emerald-300 font-bold"
             >
-              Adult Desi / Crossbred Cow (380kg)
+              {t.adultCow}
             </button>
             <button
               onClick={() => setBodyWeightKg(500)}
               className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-300 hover:text-white"
             >
-              Jaffrabadi / Murrah Buffalo (500kg)
+              {t.murrahBuffalo}
             </button>
           </div>
         </div>
@@ -151,10 +154,10 @@ export function RemedyCalculatorModal({
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div>
               <div className="text-xs font-mono font-bold text-emerald-400 uppercase">
-                Precise Gram Formulation
+                {t.preciseFormulation}
               </div>
               <div className="text-sm font-extrabold text-white mt-0.5">
-                {recipe.conditionName} — for {bodyWeightKg} kg weight
+                {currentLang === 'mr' ? recipe.conditionMarathi : currentLang === 'hi' ? (recipe.conditionNameHindi || recipe.conditionName) : recipe.conditionName} — {bodyWeightKg} kg
               </div>
             </div>
           </div>
@@ -162,6 +165,8 @@ export function RemedyCalculatorModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {recipe.ingredients.map((ing, idx) => {
               const scaled = Math.round(ing.ratioPer100kg * weightFactor * 10) / 10;
+              const name = currentLang === 'mr' ? (ing.nameMr || ing.nameMarathi || ing.name) : currentLang === 'hi' ? (ing.nameHi || ing.name) : ing.name;
+              const purpose = currentLang === 'mr' ? (ing.purposeMr || ing.purpose) : currentLang === 'hi' ? (ing.purposeHi || ing.purpose) : ing.purpose;
               return (
                 <div
                   key={idx}
@@ -169,9 +174,9 @@ export function RemedyCalculatorModal({
                 >
                   <div>
                     <div className="text-xs font-extrabold text-white">
-                      {ing.name}
+                      {name}
                     </div>
-                    <div className="text-[10px] text-emerald-400/80 mt-0.5">{ing.purpose}</div>
+                    <div className="text-[10px] text-emerald-400/80 mt-0.5">{purpose}</div>
                   </div>
                   <div className="text-right pl-3">
                     <div className="text-base font-black text-emerald-400 font-mono">
@@ -189,10 +194,10 @@ export function RemedyCalculatorModal({
           {/* Preparation Instructions */}
           <div className="pt-2 space-y-2 border-t border-white/10">
             <div className="text-xs font-bold text-slate-300">
-              Preparation & Administration Steps:
+              {t.prepSteps}
             </div>
             <div className="space-y-1 text-xs text-slate-300">
-              {recipe.preparationSteps.en.map((step, idx) => (
+              {(recipe.preparationSteps[currentLang] || recipe.preparationSteps.en).map((step, idx) => (
                 <div key={idx} className="flex items-start space-x-2">
                   <span className="font-mono text-emerald-400 font-bold">{idx + 1}.</span>
                   <span>{step}</span>
@@ -206,23 +211,23 @@ export function RemedyCalculatorModal({
         <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-2">
           <div className="flex items-center space-x-2 text-xs font-bold text-amber-300">
             <Wheat className="w-4 h-4 text-amber-400" />
-            <span>Indian Crop-Waste Feed Balancing:</span>
+            <span>{t.cropWasteBalancing}</span>
           </div>
           <div className="text-sm font-bold text-white">
-            {recipe.cropWasteFeedSupplement.title}
+            {currentLang === 'mr' ? (recipe.cropWasteFeedSupplement.titleMr || recipe.cropWasteFeedSupplement.title) : currentLang === 'hi' ? (recipe.cropWasteFeedSupplement.titleHi || recipe.cropWasteFeedSupplement.title) : recipe.cropWasteFeedSupplement.title}
           </div>
           <div className="p-2.5 rounded-xl bg-black/40 text-xs font-mono text-amber-200 border border-white/10">
-            {recipe.cropWasteFeedSupplement.ratioBreakdown}
+            {currentLang === 'mr' ? (recipe.cropWasteFeedSupplement.ratioBreakdownMr || recipe.cropWasteFeedSupplement.ratioBreakdown) : currentLang === 'hi' ? (recipe.cropWasteFeedSupplement.ratioBreakdownHi || recipe.cropWasteFeedSupplement.ratioBreakdown) : recipe.cropWasteFeedSupplement.ratioBreakdown}
           </div>
           <p className="text-xs text-slate-300 leading-relaxed">
-            {recipe.cropWasteFeedSupplement.tips}
+            {currentLang === 'mr' ? (recipe.cropWasteFeedSupplement.tipsMr || recipe.cropWasteFeedSupplement.tips) : currentLang === 'hi' ? (recipe.cropWasteFeedSupplement.tipsHi || recipe.cropWasteFeedSupplement.tips) : recipe.cropWasteFeedSupplement.tips}
           </p>
         </div>
 
         {/* Peer-Reviewed Citation Footer */}
         <div className="flex items-center space-x-2 text-[11px] text-slate-400">
           <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Source: {recipe.source} (NDDB Certified)</span>
+          <span>{t.source} {recipe.source} (NDDB Certified)</span>
         </div>
       </div>
     </div>
